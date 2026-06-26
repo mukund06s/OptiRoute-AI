@@ -3,6 +3,7 @@ import dotenv from 'dotenv';
 import express from 'express';
 
 import { errorHandler } from './middleware/errorHandler';
+import { healthRouter } from './routes/health.routes';
 
 dotenv.config();
 
@@ -12,7 +13,7 @@ const PORT = process.env.PORT || 5000;
 app.use(cors());
 app.use(express.json());
 
-// API routes will be mounted in Phase 2
+app.use('/api', healthRouter);
 
 app.use(errorHandler);
 
