@@ -1,5 +1,6 @@
 generator client {
   provider = "prisma-client-js"
+  output   = "../backend/node_modules/.prisma/client"
 }
 
 datasource db {
@@ -7,4 +8,257 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// Database models will be defined in Phase 1 (DB setup) per PRD Section 5
+enum HubType {
+  warehouse
+  transit
+  delivery
+}
+
+enum RoadType {
+  highway
+  state_road
+  city_road
+}
+
+enum RiskLevel {
+  low
+  medium
+  high
+  critical
+}
+
+enum ShipmentStatus {
+  pending
+  in_transit
+  rerouted
+  delayed
+  delivered
+  at_risk
+}
+
+enum ShipmentPriority {
+  standard
+  express
+  critical
+}
+
+enum AlertChannel {
+  slack
+  email
+  sms
+  webhook
+}
+
+enum AlertStatus {
+  sent
+  failed
+  pending
+}
+
+enum UserRole {
+  admin
+  warehouse_manager
+  viewer
+}
+
+enum AgentLogStatus {
+  success
+  error
+  skipped
+}
+
+model Hub {
+  id           Int      @id @default(autoincrement())
+  name         String   @db.VarChar(100)
+  city         String   @db.VarChar(100)
+  state        String?  @db.VarChar(100)
+  latitude     Decimal  @db.Decimal(9, 6)
+  longitude    Decimal  @db.Decimal(9, 6)
+  hubType      HubType  @map("hub_type")
+  managerName  String?  @map("manager_name") @db.VarChar(100)
+  managerEmail String?  @map("manager_email") @db.VarChar(255)
+  isActive     Boolean  @default(true) @map("is_active")
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+
+  originRoutes          Route[]        @relation("RouteOrigin")
+  destinationRoutes     Route[]        @relation("RouteDestination")
+  weatherEvents         WeatherEvent[]
+  riskScores            RiskScore[]
+  originShipments       Shipment[]     @relation("ShipmentOrigin")
+  destinationShipments  Shipment[]     @relation("ShipmentDestination")
+  currentShipments      Shipment[]     @relation("ShipmentCurrent")
+  triggeredRouteChanges RouteChange[]  @relation("RouteChangeTriggeredByHub")
+  assignedUsers         User[]
+  agentLogs             AgentLog[]
+
+  @@map("hubs")
+}
+
+model Route {
+  id                  Int       @id @default(autoincrement())
+  originHubId         Int       @map("origin_hub_id")
+  destinationHubId    Int       @map("destination_hub_id")
+  baseDistanceKm      Decimal   @map("base_distance_km") @db.Decimal(8, 2)
+  baseDurationMinutes Int       @map("base_duration_minutes")
+  roadType            RoadType? @map("road_type")
+  isActive            Boolean   @default(true) @map("is_active")
+  createdAt           DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
+
+  originHub      Hub @relation("RouteOrigin", fields: [originHubId], references: [id])
+  destinationHub Hub @relation("RouteDestination", fields: [destinationHubId], references: [id])
+
+  @@map("routes")
+}
+
+model WeatherEvent {
+  id              Int      @id @default(autoincrement())
+  hubId           Int      @map("hub_id")
+  condition       String?  @map("condition") @db.VarChar(50)
+  conditionCode   Int?     @map("condition_code")
+  temperature     Decimal? @db.Decimal(5, 2)
+  feelsLike       Decimal? @map("feels_like") @db.Decimal(5, 2)
+  humidity        Int?
+  precipitationMm Decimal  @default(0) @map("precipitation_mm") @db.Decimal(6, 2)
+  windSpeedKmh    Decimal? @map("wind_speed_kmh") @db.Decimal(6, 2)
+  visibilityKm    Decimal? @map("visibility_km") @db.Decimal(6, 2)
+  forecastFor     DateTime @map("forecast_for") @db.Timestamp(6)
+  fetchedAt       DateTime @default(now()) @map("fetched_at") @db.Timestamp(6)
+
+  hub        Hub         @relation(fields: [hubId], references: [id])
+  riskScores RiskScore[]
+
+  @@index([hubId], map: "idx_weather_events_hub_id")
+  @@map("weather_events")
+}
+
+model RiskScore {
+  id               Int       @id @default(autoincrement())
+  hubId            Int       @map("hub_id")
+  weatherEventId   Int?      @map("weather_event_id")
+  delayProbability Decimal   @map("delay_probability") @db.Decimal(5, 4)
+  riskLevel        RiskLevel @map("risk_level")
+  shapValues       Json?     @map("shap_values")
+  topRiskFactors   Json?     @map("top_risk_factors")
+  humanExplanation String?   @map("human_explanation") @db.Text
+  modelVersion     String    @default("v1.0") @map("model_version") @db.VarChar(20)
+  computedAt       DateTime  @default(now()) @map("computed_at") @db.Timestamp(6)
+  validUntil       DateTime? @map("valid_until") @db.Timestamp(6)
+
+  hub                   Hub           @relation(fields: [hubId], references: [id])
+  weatherEvent          WeatherEvent? @relation(fields: [weatherEventId], references: [id])
+  triggeredRouteChanges RouteChange[] @relation("RouteChangeTriggeredByRiskScore")
+
+  @@index([hubId], map: "idx_risk_scores_hub_id")
+  @@index([computedAt(sort: Desc)], map: "idx_risk_scores_computed_at")
+  @@map("risk_scores")
+}
+
+model Shipment {
+  id                Int              @id @default(autoincrement())
+  trackingId        String           @unique @map("tracking_id") @db.VarChar(50)
+  originHubId       Int              @map("origin_hub_id")
+  destinationHubId  Int              @map("destination_hub_id")
+  currentHubId      Int?             @map("current_hub_id")
+  status            ShipmentStatus   @default(pending)
+  plannedRoute      Json             @map("planned_route")
+  activeRoute       Json             @map("active_route")
+  plannedRouteNames Json?            @map("planned_route_names")
+  activeRouteNames  Json?            @map("active_route_names")
+  priority          ShipmentPriority @default(standard)
+  weightKg          Decimal?         @map("weight_kg") @db.Decimal(8, 2)
+  eta               DateTime?        @db.Timestamp(6)
+  actualDelivery    DateTime?        @map("actual_delivery") @db.Timestamp(6)
+  createdAt         DateTime         @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt         DateTime         @default(now()) @map("updated_at") @db.Timestamp(6)
+
+  originHub      Hub           @relation("ShipmentOrigin", fields: [originHubId], references: [id])
+  destinationHub Hub           @relation("ShipmentDestination", fields: [destinationHubId], references: [id])
+  currentHub     Hub?          @relation("ShipmentCurrent", fields: [currentHubId], references: [id])
+  routeChanges   RouteChange[]
+  alerts         Alert[]
+  agentLogs      AgentLog[]
+
+  @@index([status], map: "idx_shipments_status")
+  @@index([trackingId], map: "idx_shipments_tracking")
+  @@map("shipments")
+}
+
+model RouteChange {
+  id                     Int       @id @default(autoincrement())
+  shipmentId             Int       @map("shipment_id")
+  oldRoute               Json      @map("old_route")
+  newRoute               Json      @map("new_route")
+  oldRouteNames          Json?     @map("old_route_names")
+  newRouteNames          Json?     @map("new_route_names")
+  reason                 String    @db.Text
+  riskLevelTriggered     String?   @map("risk_level_triggered") @db.VarChar(20)
+  triggeredByHubId       Int?      @map("triggered_by_hub_id")
+  triggeredByRiskScoreId Int?      @map("triggered_by_risk_score_id")
+  agentDecisionLog       String?   @map("agent_decision_log") @db.Text
+  webhookFired           Boolean   @default(false) @map("webhook_fired")
+  webhookFiredAt         DateTime? @map("webhook_fired_at") @db.Timestamp(6)
+  createdAt              DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
+
+  shipment             Shipment   @relation(fields: [shipmentId], references: [id])
+  triggeredByHub       Hub?       @relation("RouteChangeTriggeredByHub", fields: [triggeredByHubId], references: [id])
+  triggeredByRiskScore RiskScore? @relation("RouteChangeTriggeredByRiskScore", fields: [triggeredByRiskScoreId], references: [id])
+  alerts               Alert[]
+
+  @@index([shipmentId], map: "idx_route_changes_shipment")
+  @@map("route_changes")
+}
+
+model Alert {
+  id             Int          @id @default(autoincrement())
+  routeChangeId  Int?         @map("route_change_id")
+  shipmentId     Int?         @map("shipment_id")
+  channel        AlertChannel
+  recipient      String?      @db.VarChar(255)
+  subject        String?      @db.VarChar(500)
+  message        String       @db.Text
+  isAnomalyAlert Boolean      @default(false) @map("is_anomaly_alert")
+  anomalyDetails Json?        @map("anomaly_details")
+  status         AlertStatus  @default(pending)
+  n8nExecutionId String?      @map("n8n_execution_id") @db.VarChar(100)
+  sentAt         DateTime     @default(now()) @map("sent_at") @db.Timestamp(6)
+
+  routeChange RouteChange? @relation(fields: [routeChangeId], references: [id])
+  shipment    Shipment?    @relation(fields: [shipmentId], references: [id])
+
+  @@map("alerts")
+}
+
+model User {
+  id            Int      @id @default(autoincrement())
+  name          String   @db.VarChar(100)
+  email         String   @unique @db.VarChar(255)
+  role          UserRole @default(viewer)
+  assignedHubId Int?     @map("assigned_hub_id")
+  phone         String?  @db.VarChar(20)
+  isActive      Boolean  @default(true) @map("is_active")
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+
+  assignedHub Hub? @relation(fields: [assignedHubId], references: [id])
+
+  @@map("users")
+}
+
+model AgentLog {
+  id           Int             @id @default(autoincrement())
+  agentName    String          @map("agent_name") @db.VarChar(50)
+  action       String          @db.VarChar(100)
+  inputData    Json?           @map("input_data")
+  outputData   Json?           @map("output_data")
+  durationMs   Int?            @map("duration_ms")
+  status       AgentLogStatus?
+  errorMessage String?         @map("error_message") @db.Text
+  shipmentId   Int?            @map("shipment_id")
+  hubId        Int?            @map("hub_id")
+  createdAt    DateTime        @default(now()) @map("created_at") @db.Timestamp(6)
+
+  shipment Shipment? @relation(fields: [shipmentId], references: [id])
+  hub      Hub?      @relation(fields: [hubId], references: [id])
+
+  @@index([createdAt(sort: Desc)], map: "idx_agent_logs_created")
+  @@map("agent_logs")
+}
