@@ -1,0 +1,114 @@
+{
+  "predicted_class": "critical",
+  "confidence": 0.9072380952380954,
+  "probabilities": {
+    "critical": 0.9072380952380954,
+    "high": 0.09276190476190475,
+    "low": 0.0,
+    "medium": 0.0
+  },
+  "top_features": [
+    {
+      "feature": "current_risk_level",
+      "contribution": 0.3331571158833946
+    },
+    {
+      "feature": "historical_delay_minutes",
+      "contribution": 0.2888096126727982
+    },
+    {
+      "feature": "shipment_priority",
+      "contribution": 0.13069447182155036
+    },
+    {
+      "feature": "destination_delay_rate",
+      "contribution": 0.04960040953816182
+    },
+    {
+      "feature": "rerouted_before",
+      "contribution": -0.007210662229898111
+    },
+    {
+      "feature": "distance_km",
+      "contribution": 0.0028699040985144145
+    },
+    {
+      "feature": "duration_minutes",
+      "contribution": 0.0025243036454411674
+    },
+    {
+      "feature": "weather_condition",
+      "contribution": 0.0019562608423719288
+    },
+    {
+      "feature": "traffic_level",
+      "contribution": -0.0018945562428978866
+    },
+    {
+      "feature": "destination_hub",
+      "contribution": 0.0015959400942170045
+    }
+  ],
+  "positive_contributors": [
+    {
+      "feature": "current_risk_level",
+      "contribution": 0.3331571158833946
+    },
+    {
+      "feature": "historical_delay_minutes",
+      "contribution": 0.2888096126727982
+    },
+    {
+      "feature": "shipment_priority",
+      "contribution": 0.13069447182155036
+    },
+    {
+      "feature": "destination_delay_rate",
+      "contribution": 0.04960040953816182
+    },
+    {
+      "feature": "distance_km",
+      "contribution": 0.0028699040985144145
+    }
+  ],
+  "negative_contributors": [
+    {
+      "feature": "rerouted_before",
+      "contribution": -0.007210662229898111
+    },
+    {
+      "feature": "traffic_level",
+      "contribution": -0.0018945562428978866
+    },
+    {
+      "feature": "departure_hour",
+      "contribution": -0.0008275500680030733
+    },
+    {
+      "feature": "day_of_week",
+      "contribution": -0.0004935994216683156
+    },
+    {
+      "feature": "origin_hub",
+      "contribution": -0.0002599947205179028
+    }
+  ],
+  "raw_shap_values": {
+    "origin_hub": -0.0002599947205179028,
+    "destination_hub": 0.0015959400942170045,
+    "distance_km": 0.0028699040985144145,
+    "duration_minutes": 0.0025243036454411674,
+    "road_type": -0.00020100219464178602,
+    "weather_condition": 0.0019562608423719288,
+    "traffic_level": -0.0018945562428978866,
+    "shipment_priority": 0.13069447182155036,
+    "weight_kg": 0.0010365591663339764,
+    "departure_hour": -0.0008275500680030733,
+    "day_of_week": -0.0004935994216683156,
+    "historical_delay_minutes": 0.2888096126727982,
+    "current_risk_level": 0.3331571158833946,
+    "rerouted_before": -0.007210662229898111,
+    "destination_delay_rate": 0.04960040953816182
+  },
+  "base_value": 0.10588088235294117
+}
