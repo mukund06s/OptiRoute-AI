@@ -7,6 +7,7 @@ import { healthRouter } from './routes/health.routes';
 import { hubsRouter } from './routes/hubs.routes';
 import { routesRouter } from './routes/routes.routes';
 import { shipmentsRouter } from './routes/shipments.routes';
+import { routingRouter } from './routes/routing.routes';
 
 dotenv.config();
 
@@ -20,6 +21,7 @@ app.use('/api', healthRouter);
 app.use('/api/hubs', hubsRouter);
 app.use('/api/routes', routesRouter);
 app.use('/api/shipments', shipmentsRouter);
+app.use('/api/routing', routingRouter);
 
 app.use(errorHandler);
 

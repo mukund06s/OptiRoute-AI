@@ -85,6 +85,20 @@ export const updateShipmentHubSchema = z.object({
   }),
 });
 
+// Routing API Schemas
+export const calculateRouteSchema = z.object({
+  body: z.object({
+    originHubId: z.number().int().positive(),
+    destinationHubId: z.number().int().positive(),
+  }),
+});
+
+export const shipmentIdParamSchema = z.object({
+  params: z.object({
+    shipmentId: z.string().regex(/^\d+$/).transform(Number),
+  }),
+});
+
 export const shipmentIdSchema = z.object({
   params: z.object({
     id: z.string().regex(/^\d+$/).transform(Number),
