@@ -8,8 +8,18 @@ import numpy as np
 import pickle
 import json
 import os
+from datetime import datetime
 from sklearn.preprocessing import LabelEncoder, StandardScaler
 from sklearn.model_selection import train_test_split
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.metrics import (
+    accuracy_score,
+    precision_score,
+    recall_score,
+    f1_score,
+    confusion_matrix,
+    classification_report,
+)
 from typing import Tuple, Dict, List
 
 
@@ -305,16 +315,222 @@ class FeatureEngineer:
         print(f"  Saved feature metadata to {metadata_path}")
 
 
+class ModelTrainer:
+    """Model training and evaluation pipeline"""
+
+    def __init__(
+        self,
+        model_type: str = "RandomForest",
+        random_state: int = 42,
+        **hyperparameters,
+    ):
+        """
+        Initialize model trainer
+        
+        Args:
+            model_type: Type of model to train
+            random_state: Random seed for reproducibility
+            **hyperparameters: Model hyperparameters
+        """
+        self.model_type = model_type
+        self.random_state = random_state
+        self.hyperparameters = hyperparameters or {
+            "n_estimators": 100,
+            "max_depth": 20,
+            "min_samples_split": 5,
+            "min_samples_leaf": 2,
+            "max_features": "sqrt",
+            "random_state": random_state,
+            "n_jobs": -1,
+        }
+        self.model = None
+        self.feature_importance = None
+        self.training_metadata = {}
+
+    def train(
+        self, X_train: pd.DataFrame, y_train: np.ndarray
+    ) -> RandomForestClassifier:
+        """
+        Train the model
+        
+        Args:
+            X_train: Training features
+            y_train: Training target
+            
+        Returns:
+            Trained model
+        """
+        print(f"\nTraining {self.model_type}...")
+        print(f"Hyperparameters: {self.hyperparameters}")
+
+        self.model = RandomForestClassifier(**self.hyperparameters)
+
+        self.model.fit(X_train, y_train)
+
+        print(f"Model trained successfully!")
+        print(f"Number of trees: {self.model.n_estimators}")
+        print(f"Number of features: {self.model.n_features_in_}")
+
+        return self.model
+
+    def evaluate(
+        self, X: pd.DataFrame, y: np.ndarray, split_name: str = "Validation"
+    ) -> Dict:
+        """
+        Evaluate model on a dataset
+        
+        Args:
+            X: Features
+            y: Target
+            split_name: Name of the split (for logging)
+            
+        Returns:
+            Dictionary of evaluation metrics
+        """
+        print(f"\nEvaluating on {split_name} set...")
+
+        y_pred = self.model.predict(X)
+
+        accuracy = accuracy_score(y, y_pred)
+        precision = precision_score(y, y_pred, average="weighted", zero_division=0)
+        recall = recall_score(y, y_pred, average="weighted", zero_division=0)
+        f1 = f1_score(y, y_pred, average="weighted", zero_division=0)
+        conf_matrix = confusion_matrix(y, y_pred)
+
+        print(f"  Accuracy:  {accuracy:.4f}")
+        print(f"  Precision: {precision:.4f}")
+        print(f"  Recall:    {recall:.4f}")
+        print(f"  F1-score:  {f1:.4f}")
+
+        metrics = {
+            "accuracy": float(accuracy),
+            "precision": float(precision),
+            "recall": float(recall),
+            "f1_score": float(f1),
+            "confusion_matrix": conf_matrix.tolist(),
+        }
+
+        return metrics
+
+    def generate_classification_report(
+        self, X: pd.DataFrame, y: np.ndarray, target_names: List[str]
+    ) -> str:
+        """
+        Generate detailed classification report
+        
+        Args:
+            X: Features
+            y: Target
+            target_names: Names of target classes
+            
+        Returns:
+            Classification report string
+        """
+        y_pred = self.model.predict(X)
+        report = classification_report(y, y_pred, target_names=target_names)
+        return report
+
+    def calculate_feature_importance(
+        self, feature_names: List[str], top_n: int = 10
+    ) -> Dict:
+        """
+        Calculate and display feature importance
+        
+        Args:
+            feature_names: Names of features
+            top_n: Number of top features to display
+            
+        Returns:
+            Dictionary of feature importances
+        """
+        print(f"\nCalculating feature importance...")
+
+        importances = self.model.feature_importances_
+        feature_importance_dict = dict(zip(feature_names, importances))
+        sorted_features = sorted(
+            feature_importance_dict.items(), key=lambda x: x[1], reverse=True
+        )
+
+        print(f"\nTop {top_n} most important features:")
+        for i, (feature, importance) in enumerate(sorted_features[:top_n], 1):
+            print(f"  {i}. {feature}: {importance:.4f}")
+
+        self.feature_importance = {k: float(v) for k, v in feature_importance_dict.items()}
+
+        return self.feature_importance
+
+    def save_model(self, output_path: str):
+        """
+        Save trained model
+        
+        Args:
+            output_path: Path to save model
+        """
+        os.makedirs(os.path.dirname(output_path) or ".", exist_ok=True)
+
+        with open(output_path, "wb") as f:
+            pickle.dump(self.model, f)
+
+        print(f"  Model saved to {output_path}")
+
+    def save_metadata(
+        self,
+        output_path: str,
+        train_size: int,
+        val_size: int,
+        test_size: int,
+        feature_count: int,
+        target_classes: List[str],
+        val_metrics: Dict,
+        test_metrics: Dict,
+    ):
+        """
+        Save model metadata
+        
+        Args:
+            output_path: Path to save metadata
+            train_size: Size of training set
+            val_size: Size of validation set
+            test_size: Size of test set
+            feature_count: Number of features
+            target_classes: List of target class names
+            val_metrics: Validation metrics
+            test_metrics: Test metrics
+        """
+        metadata = {
+            "model_type": self.model_type,
+            "hyperparameters": self.hyperparameters,
+            "train_size": train_size,
+            "validation_size": val_size,
+            "test_size": test_size,
+            "feature_count": feature_count,
+            "target_classes": target_classes,
+            "validation_metrics": val_metrics,
+            "test_metrics": test_metrics,
+            "feature_importance": self.feature_importance,
+            "training_timestamp": datetime.now().isoformat(),
+            "model_version": "v1.0",
+        }
+
+        os.makedirs(os.path.dirname(output_path) or ".", exist_ok=True)
+
+        with open(output_path, "w") as f:
+            json.dump(metadata, f, indent=2)
+
+        print(f"  Metadata saved to {output_path}")
+
+
 def main():
-    """Main function to run feature engineering pipeline"""
+    """Main function to run complete ML pipeline"""
     print("=" * 60)
-    print("OptiRoute Feature Engineering Pipeline")
+    print("OptiRoute ML Training Pipeline")
     print("=" * 60)
 
     data_path = os.path.join(
         os.path.dirname(__file__), "..", "data", "training_data.csv"
     )
 
+    print("\n[PHASE 1: Feature Engineering]")
     engineer = FeatureEngineer(random_state=42)
 
     df = engineer.load_data(data_path)
@@ -336,15 +552,68 @@ def main():
     engineer.save_encoders(output_dir)
     engineer.save_feature_metadata(output_dir)
 
+    print("\n[PHASE 2: Model Training]")
+    trainer = ModelTrainer(
+        model_type="RandomForest",
+        random_state=42,
+        n_estimators=100,
+        max_depth=20,
+        min_samples_split=5,
+        min_samples_leaf=2,
+        max_features="sqrt",
+    )
+
+    model = trainer.train(X_train, y_train)
+
+    print("\n[PHASE 3: Model Evaluation]")
+    val_metrics = trainer.evaluate(X_val, y_val, split_name="Validation")
+    test_metrics = trainer.evaluate(X_test, y_test, split_name="Test")
+
+    print("\n[PHASE 4: Classification Reports]")
+    print("\nValidation Set Report:")
+    print(
+        trainer.generate_classification_report(
+            X_val, y_val, engineer.label_encoder.classes_
+        )
+    )
+
+    print("\nTest Set Report:")
+    print(
+        trainer.generate_classification_report(
+            X_test, y_test, engineer.label_encoder.classes_
+        )
+    )
+
+    print("\n[PHASE 5: Feature Importance]")
+    trainer.calculate_feature_importance(engineer.feature_columns, top_n=10)
+
+    print("\n[PHASE 6: Saving Model and Metadata]")
+    model_path = os.path.join(output_dir, "risk_model.pkl")
+    trainer.save_model(model_path)
+
+    metadata_path = os.path.join(output_dir, "model_metadata.json")
+    trainer.save_metadata(
+        metadata_path,
+        train_size=len(X_train),
+        val_size=len(X_val),
+        test_size=len(X_test),
+        feature_count=len(engineer.feature_columns),
+        target_classes=engineer.label_encoder.classes_.tolist(),
+        val_metrics=val_metrics,
+        test_metrics=test_metrics,
+    )
+
     print("\n" + "=" * 60)
-    print("[SUCCESS] Feature engineering complete!")
+    print("[SUCCESS] ML Training Pipeline Complete!")
     print("=" * 60)
-    print(f"Total features: {len(engineer.feature_columns)}")
-    print(f"Categorical features: {len(engineer.categorical_features)}")
-    print(f"Numerical features: {len(engineer.numerical_features)}")
-    print(f"Target classes: {len(engineer.label_encoder.classes_)}")
-    print(f"\nTrain: {X_train.shape}, Val: {X_val.shape}, Test: {X_test.shape}")
-    print("\nReady for model training in next phase!")
+    print(f"\nModel Performance:")
+    print(f"  Validation Accuracy: {val_metrics['accuracy']:.4f}")
+    print(f"  Test Accuracy:       {test_metrics['accuracy']:.4f}")
+    print(f"  Validation F1:       {val_metrics['f1_score']:.4f}")
+    print(f"  Test F1:             {test_metrics['f1_score']:.4f}")
+    print(f"\nModel saved to: {model_path}")
+    print(f"Metadata saved to: {metadata_path}")
+    print("\nReady for deployment!")
 
 
 if __name__ == "__main__":
