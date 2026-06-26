@@ -1,5 +1,6 @@
 import { Graph, Edge } from './graphBuilder';
 import { PriorityQueue } from './PriorityQueue';
+import { RiskScore, getEdgeWeight } from './weightCalculator';
 
 export interface DijkstraResult {
   path: number[];
@@ -13,45 +14,8 @@ export interface DijkstraResult {
   visitedNodes: number;
 }
 
-export interface RiskScore {
-  hubId: number;
-  riskLevel: string;
-  riskScore: number;
-}
-
 export interface DijkstraOptions {
   riskScores?: Map<number, RiskScore>;
-}
-
-function calculateEdgeWeight(edge: Edge, options?: DijkstraOptions): number {
-  const baseWeight = edge.baseDistanceKm + edge.baseDurationMinutes * 0.5;
-
-  if (!options?.riskScores) {
-    return baseWeight;
-  }
-
-  const riskScore = options.riskScores.get(edge.destinationHubId);
-  if (!riskScore) {
-    return baseWeight;
-  }
-
-  const riskMultiplier = getRiskMultiplier(riskScore.riskLevel);
-  return baseWeight * riskMultiplier;
-}
-
-function getRiskMultiplier(riskLevel: string): number {
-  switch (riskLevel.toUpperCase()) {
-    case 'CRITICAL':
-      return 3.0;
-    case 'HIGH':
-      return 2.0;
-    case 'MEDIUM':
-      return 1.5;
-    case 'LOW':
-      return 1.0;
-    default:
-      return 1.0;
-  }
 }
 
 export function dijkstra(
@@ -133,7 +97,7 @@ export function dijkstra(
         continue;
       }
 
-      const edgeWeight = calculateEdgeWeight(edge, options);
+      const edgeWeight = getEdgeWeight(edge, options?.riskScores);
       const newDistance = currentDistance + edgeWeight;
       const oldDistance = distances.get(neighborId) ?? Infinity;
 
