@@ -1,0 +1,12 @@
+{
+  "name": "OptiRoute Reroute Alert",
+  "nodes": [],
+  "connections": {},
+  "active": false,
+  "settings": {},
+  "versionId": "1",
+  "meta": {
+    "instanceId": "optiroute"
+  },
+  "tags": []
+}
