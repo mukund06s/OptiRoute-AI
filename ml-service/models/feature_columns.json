@@ -1,0 +1,45 @@
+{
+  "feature_columns": [
+    "origin_hub",
+    "destination_hub",
+    "distance_km",
+    "duration_minutes",
+    "road_type",
+    "weather_condition",
+    "traffic_level",
+    "shipment_priority",
+    "weight_kg",
+    "departure_hour",
+    "day_of_week",
+    "historical_delay_minutes",
+    "current_risk_level",
+    "rerouted_before",
+    "destination_delay_rate"
+  ],
+  "categorical_features": [
+    "origin_hub",
+    "destination_hub",
+    "road_type",
+    "weather_condition",
+    "traffic_level",
+    "shipment_priority",
+    "departure_hour",
+    "day_of_week",
+    "current_risk_level",
+    "rerouted_before"
+  ],
+  "numerical_features": [
+    "distance_km",
+    "duration_minutes",
+    "weight_kg",
+    "historical_delay_minutes",
+    "destination_delay_rate"
+  ],
+  "target_classes": [
+    "critical",
+    "high",
+    "low",
+    "medium"
+  ],
+  "num_features": 15
+}
