@@ -4,6 +4,9 @@ import express from 'express';
 
 import { errorHandler } from './middleware/errorHandler';
 import { healthRouter } from './routes/health.routes';
+import { hubsRouter } from './routes/hubs.routes';
+import { routesRouter } from './routes/routes.routes';
+import { shipmentsRouter } from './routes/shipments.routes';
 
 dotenv.config();
 
@@ -14,6 +17,9 @@ app.use(cors());
 app.use(express.json());
 
 app.use('/api', healthRouter);
+app.use('/api/hubs', hubsRouter);
+app.use('/api/routes', routesRouter);
+app.use('/api/shipments', shipmentsRouter);
 
 app.use(errorHandler);
 
