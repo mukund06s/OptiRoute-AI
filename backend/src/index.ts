@@ -9,6 +9,7 @@ import { routesRouter } from './routes/routes.routes';
 import { shipmentsRouter } from './routes/shipments.routes';
 import { routingRouter } from './routes/routing.routes';
 import { workflowRouter } from './routes/workflow.routes';
+import { cronManager } from './lib/cron';
 
 dotenv.config();
 
@@ -27,8 +28,28 @@ app.use('/api/workflow', workflowRouter);
 
 app.use(errorHandler);
 
-app.listen(PORT, () => {
+app.listen(PORT, async () => {
   console.log(`OptiRoute backend running on port ${PORT}`);
+  
+  // Start cron jobs
+  try {
+    await cronManager.start();
+  } catch (error: any) {
+    console.error('[Server] Failed to start cron jobs:', error.message);
+  }
+});
+
+// Graceful shutdown
+process.on('SIGTERM', () => {
+  console.log('[Server] SIGTERM received, stopping cron jobs...');
+  cronManager.stop();
+  process.exit(0);
+});
+
+process.on('SIGINT', () => {
+  console.log('[Server] SIGINT received, stopping cron jobs...');
+  cronManager.stop();
+  process.exit(0);
 });
 
 export default app;
