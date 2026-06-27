@@ -8,6 +8,7 @@ import { hubsRouter } from './routes/hubs.routes';
 import { routesRouter } from './routes/routes.routes';
 import { shipmentsRouter } from './routes/shipments.routes';
 import { routingRouter } from './routes/routing.routes';
+import { workflowRouter } from './routes/workflow.routes';
 
 dotenv.config();
 
@@ -22,6 +23,7 @@ app.use('/api/hubs', hubsRouter);
 app.use('/api/routes', routesRouter);
 app.use('/api/shipments', shipmentsRouter);
 app.use('/api/routing', routingRouter);
+app.use('/api/workflow', workflowRouter);
 
 app.use(errorHandler);
 
