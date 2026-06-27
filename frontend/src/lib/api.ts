@@ -3,8 +3,9 @@
  * Consumes backend REST APIs only. Zero business logic.
  */
 
-const BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:5000/api';
+import { publicEnv } from './env';
+
+const BASE_URL = publicEnv.apiBaseUrl;
 
 const DEFAULT_TIMEOUT_MS = 15_000;
 

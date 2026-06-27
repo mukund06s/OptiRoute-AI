@@ -1,5 +1,6 @@
 import { NextFunction, Request, Response } from 'express';
 import { AnyZodObject, ZodError } from 'zod';
+import { securityLog } from '../lib/securityLogger';
 
 export const validate =
   (schema: AnyZodObject) =>
@@ -13,6 +14,12 @@ export const validate =
       next();
     } catch (error) {
       if (error instanceof ZodError) {
+        securityLog('validation_failed', {
+          path: req.originalUrl,
+          method: req.method,
+          ip: req.ip,
+          issueCount: error.errors.length,
+        });
         res.status(400).json({
           error: 'Validation failed',
           details: error.errors.map((err) => ({

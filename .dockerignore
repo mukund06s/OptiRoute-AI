@@ -1,0 +1,18 @@
+# Root build context exclusions (backend image builds from repository root)
+.git
+.gitignore
+**/.env
+**/.env.local
+**/node_modules
+frontend/.next
+backend/dist
+**/__pycache__
+*.md
+!README.md
+frontend
+ml-service
+n8n-workflows
+INTEGRATION_REPORT.md
+PERFORMANCE_REPORT.md
+SECURITY_REPORT.md
+DOCKER_REPORT.md

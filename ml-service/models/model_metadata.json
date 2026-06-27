@@ -18,42 +18,42 @@
     "medium"
   ],
   "validation_metrics": {
-    "accuracy": 0.9108333333333334,
-    "precision": 0.911591295929795,
-    "recall": 0.9108333333333334,
-    "f1_score": 0.9108170624682785,
+    "accuracy": 0.9083333333333333,
+    "precision": 0.9090761431438562,
+    "recall": 0.9083333333333333,
+    "f1_score": 0.9084403537776198,
     "confusion_matrix": [
       [
-        107,
-        20,
+        108,
+        19,
         0,
         0
       ],
       [
-        9,
+        13,
         320,
         0,
-        19
+        15
       ],
       [
         0,
         0,
-        332,
-        17
+        327,
+        22
       ],
       [
         0,
         27,
-        15,
-        334
+        14,
+        335
       ]
     ]
   },
   "test_metrics": {
     "accuracy": 0.9025,
-    "precision": 0.9038143955918779,
+    "precision": 0.9039817612620112,
     "recall": 0.9025,
-    "f1_score": 0.9023383094530762,
+    "f1_score": 0.9024710301006204,
     "confusion_matrix": [
       [
         172,
@@ -62,42 +62,42 @@
         0
       ],
       [
-        10,
-        536,
+        9,
+        532,
         0,
-        35
+        40
       ],
       [
         0,
         0,
-        550,
-        32
+        549,
+        33
       ],
       [
         0,
-        46,
-        33,
-        547
+        45,
+        29,
+        552
       ]
     ]
   },
   "feature_importance": {
-    "origin_hub": 0.016784926157711308,
-    "destination_hub": 0.017112228722166212,
-    "distance_km": 0.029085312620888894,
-    "duration_minutes": 0.028356710524187506,
-    "road_type": 0.01040149892613791,
-    "weather_condition": 0.06469101088159776,
-    "traffic_level": 0.05995957609264018,
-    "shipment_priority": 0.07815814638898978,
-    "weight_kg": 0.028697118910777124,
-    "departure_hour": 0.03882314124882425,
-    "day_of_week": 0.015070954723781118,
-    "historical_delay_minutes": 0.2759255321938793,
-    "current_risk_level": 0.24524888985371052,
-    "rerouted_before": 0.022264027753318424,
-    "destination_delay_rate": 0.06942092500138973
+    "origin_hub": 0.01619124464185959,
+    "destination_hub": 0.016630720844814078,
+    "distance_km": 0.02882369061503061,
+    "duration_minutes": 0.027426949324605564,
+    "road_type": 0.009871122208489165,
+    "weather_condition": 0.062167294908150504,
+    "traffic_level": 0.06089373016719685,
+    "shipment_priority": 0.07816344241542149,
+    "weight_kg": 0.02744748281734674,
+    "departure_hour": 0.03707985859444498,
+    "day_of_week": 0.014506120392712553,
+    "historical_delay_minutes": 0.26876807216037196,
+    "current_risk_level": 0.25631881209141016,
+    "rerouted_before": 0.022893859071450126,
+    "destination_delay_rate": 0.07281759974669559
   },
-  "training_timestamp": "2026-06-28T01:35:15.578287",
+  "training_timestamp": "2026-06-28T02:50:20.647629",
   "model_version": "v1.0"
 }

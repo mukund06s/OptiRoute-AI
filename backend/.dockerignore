@@ -1,0 +1,13 @@
+node_modules
+dist
+npm-debug.log*
+.env
+.env.*
+!.env.example
+coverage
+.nyc_output
+*.tsbuildinfo
+.git
+.gitignore
+**/__tests__
+**/*.test.ts

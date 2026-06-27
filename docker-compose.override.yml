@@ -1,0 +1,13 @@
+# Local development overrides — optional bind mounts for faster iteration
+# Note: production images use baked artifacts; do not mount over frontend standalone output.
+
+services:
+  backend:
+    environment:
+      NODE_ENV: development
+
+  ml-service:
+    environment:
+      NODE_ENV: development
+    volumes:
+      - ./ml-service:/app

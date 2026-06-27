@@ -1,8 +1,11 @@
 import asyncio
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from contextlib import asynccontextmanager
+from starlette.middleware.base import BaseHTTPMiddleware
 
+from config import settings
 from schemas.prediction import (
     PredictionRequest,
     PredictionResponse,
@@ -13,10 +16,28 @@ from services.predictor import PredictionService
 prediction_service = PredictionService()
 
 
+class RequestSizeLimitMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next):
+        content_length = request.headers.get("content-length")
+        if content_length is not None:
+            try:
+                if int(content_length) > settings.max_request_bytes:
+                    return JSONResponse(
+                        status_code=413,
+                        content={"detail": "Request entity too large"},
+                    )
+            except ValueError:
+                return JSONResponse(
+                    status_code=400,
+                    content={"detail": "Invalid Content-Length header"},
+                )
+        return await call_next(request)
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Lifespan event handler for startup and shutdown"""
-    print("Starting OptiRoute ML Service...")
+    print(f"Starting OptiRoute ML Service ({settings.node_env})...")
     success = prediction_service.load_model()
     if not success:
         print("WARNING: Failed to load model during startup")
@@ -29,15 +50,34 @@ app = FastAPI(
     description="Risk prediction and SHAP explainability microservice",
     version="1.0.0",
     lifespan=lifespan,
+    docs_url=None if settings.is_production else "/docs",
+    redoc_url=None if settings.is_production else "/redoc",
+    openapi_url=None if settings.is_production else "/openapi.json",
 )
+
+app.add_middleware(RequestSizeLimitMiddleware)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=settings.cors_origin_list(),
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "OPTIONS"],
+    allow_headers=["Content-Type", "Accept"],
 )
+
+
+@app.exception_handler(Exception)
+async def unhandled_exception_handler(request: Request, exc: Exception):
+    if not settings.is_production:
+        print(f"[ML Service Error] {request.method} {request.url.path}: {exc}")
+
+    if settings.is_production:
+        return JSONResponse(status_code=500, content={"detail": "Internal server error"})
+
+    return JSONResponse(
+        status_code=500,
+        content={"detail": "Internal server error", "message": str(exc)},
+    )
 
 
 @app.get("/health", response_model=HealthResponse)
@@ -74,8 +114,12 @@ async def predict_risk(request: PredictionRequest):
 
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Prediction failed: {str(e)}")
+    except HTTPException:
+        raise
+    except Exception:
+        if settings.is_production:
+            raise HTTPException(status_code=500, detail="Prediction failed")
+        raise HTTPException(status_code=500, detail="Prediction failed")
 
 
 @app.get("/")
@@ -84,5 +128,5 @@ async def root():
     return {
         "service": "OptiRoute ML Service",
         "version": "1.0.0",
-        "endpoints": ["/health", "/predict", "/docs"],
+        "endpoints": ["/health", "/predict"] + ([] if settings.is_production else ["/docs"]),
     }
