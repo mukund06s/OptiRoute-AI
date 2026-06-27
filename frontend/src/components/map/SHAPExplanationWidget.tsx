@@ -11,8 +11,9 @@ interface SHAPExplanationWidgetProps {
  * Shows top risk factors with horizontal bars
  */
 export function SHAPExplanationWidget({ riskScore }: SHAPExplanationWidgetProps) {
-  const shapValues = riskScore.shap_values ?? {};
-  const topFactors = riskScore.top_risk_factors ?? [];
+  const shapValues = riskScore.shapValues ?? riskScore.shap_values ?? {};
+  const topFactors = riskScore.topRiskFactors ?? riskScore.top_risk_factors ?? [];
+  const humanExplanation = riskScore.humanExplanation ?? riskScore.human_explanation;
 
   // Sort by absolute SHAP value (descending) and take top 4
   const sortedFeatures = Object.entries(shapValues)
@@ -58,10 +59,10 @@ export function SHAPExplanationWidget({ riskScore }: SHAPExplanationWidgetProps)
         })}
       </div>
 
-      {riskScore.human_explanation && (
+      {humanExplanation && (
         <div className="mt-4 pt-3 border-t border-slate-700">
           <div className="text-xs text-slate-300 leading-relaxed">
-            {riskScore.human_explanation}
+            {humanExplanation}
           </div>
         </div>
       )}

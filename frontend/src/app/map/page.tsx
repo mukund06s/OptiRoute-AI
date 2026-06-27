@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import dynamic from 'next/dynamic';
-import { hubsApi, shipmentsApi, type Hub, type Shipment } from '@/lib/api';
+import { hubsApi, shipmentsApi, type Hub, type ShipmentListItem } from '@/lib/api';
 import { Loader2, AlertCircle } from 'lucide-react';
 
 // Dynamic imports to avoid SSR issues with Leaflet
@@ -102,17 +102,17 @@ export default function MapPage() {
         {/* Route Polylines */}
         {showRoutes &&
           !shipmentsLoading &&
-          shipments.map((shipment: Shipment) => (
+          shipments.map((shipment: ShipmentListItem) => (
             <div key={shipment.id}>
               {/* Planned route (dashed grey) */}
-              {shipment.planned_route && shipment.planned_route.length > 1 && (
-                <RoutePolyline hubs={hubs} route={shipment.planned_route} isActive={false} />
+              {shipment.plannedRoute && shipment.plannedRoute.length > 1 && (
+                <RoutePolyline hubs={hubs} route={shipment.plannedRoute} isActive={false} />
               )}
               {/* Active route (solid blue) - only if different from planned */}
-              {shipment.active_route &&
-                shipment.active_route.length > 1 &&
-                JSON.stringify(shipment.active_route) !== JSON.stringify(shipment.planned_route) && (
-                  <RoutePolyline hubs={hubs} route={shipment.active_route} isActive={true} />
+              {shipment.activeRoute &&
+                shipment.activeRoute.length > 1 &&
+                JSON.stringify(shipment.activeRoute) !== JSON.stringify(shipment.plannedRoute) && (
+                  <RoutePolyline hubs={hubs} route={shipment.activeRoute} isActive={true} />
                 )}
             </div>
           ))}

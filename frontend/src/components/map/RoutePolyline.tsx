@@ -18,7 +18,7 @@ export function RoutePolyline({ hubs, route, isActive = false }: RoutePolylinePr
   const positions: [number, number][] = route
     .map((hubId) => {
       const hub = hubs.find((h) => h.id === hubId);
-      return hub ? [hub.latitude, hub.longitude] as [number, number] : null;
+      return hub ? [Number(hub.latitude), Number(hub.longitude)] as [number, number] : null;
     })
     .filter((pos): pos is [number, number] => pos !== null);
 

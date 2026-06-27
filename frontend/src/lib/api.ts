@@ -85,19 +85,36 @@ export const api = {
 /* ------------------------------------------------------------------ */
 
 export const hubsApi = {
-  list:         ()         => api.get<HubListResponse>('/hubs'),
-  getById:      (id: number) => api.get<HubDetail>(`/hubs/${id}`),
+  list: async () => {
+    const res = await api.get<ApiDataResponse<Hub[]>>('/hubs');
+    return { hubs: res.data, total: res.data.length };
+  },
+  getById: async (id: number) => {
+    const res = await api.get<ApiDataResponse<HubDetail>>(`/hubs/${id}`);
+    return res.data;
+  },
 };
 
 export const shipmentsApi = {
-  list:         (params?: ShipmentParams) => {
+  list: async (params?: ShipmentParams) => {
     const qs = params
       ? '?' + new URLSearchParams(params as Record<string, string>).toString()
       : '';
-    return api.get<ShipmentListResponse>(`/shipments${qs}`);
+    const res = await api.get<ApiDataResponse<ShipmentListItem[]>>(`/shipments${qs}`);
+    return { shipments: res.data, total: res.data.length };
   },
-  getById:      (id: number) => api.get<Shipment>(`/shipments/${id}`),
-  create:       (body: CreateShipmentBody) => api.post<Shipment>('/shipments', body),
+  getById: async (id: number) => {
+    const res = await api.get<ApiDataResponse<ShipmentDetail>>(`/shipments/${id}`);
+    return res.data;
+  },
+  create: async (body: CreateShipmentBody) => {
+    const res = await api.post<ApiDataResponse<ShipmentListItem>>('/shipments', body);
+    return res.data;
+  },
+  stats: async () => {
+    const res = await api.get<ApiDataResponse<ShipmentStats>>('/shipments/stats');
+    return res.data;
+  },
 };
 
 export const routingApi = {
@@ -105,8 +122,14 @@ export const routingApi = {
 };
 
 export const riskApi = {
-  scores:       () => api.get<RiskScoreListResponse>('/risk/scores'),
-  scoresByHub:  (hubId: number) => api.get<RiskScore>(`/risk/scores/${hubId}`),
+  scores: async () => {
+    const res = await api.get<ApiDataResponse<RiskScore[]>>('/risk/scores');
+    return { scores: res.data, total: res.data.length };
+  },
+  scoresByHub: async (hubId: number) => {
+    const res = await api.get<ApiDataResponse<RiskScore>>(`/risk/scores/${hubId}`);
+    return res.data;
+  },
 };
 
 export const alertsApi = {
@@ -141,28 +164,35 @@ export const workflowApi = {
 /*  Shared types                                                        */
 /* ------------------------------------------------------------------ */
 
+export interface ApiDataResponse<T> {
+  data: T;
+  message?: string;
+}
+
 export interface Hub {
   id: number;
   name: string;
   city: string;
-  state: string;
-  latitude: number;
-  longitude: number;
-  hub_type: string;
-  manager_name: string;
-  manager_email: string;
-  is_active: boolean;
-  risk_score?: RiskScore;
-  weather_event?: WeatherEvent;
+  state: string | null;
+  latitude: number | string;
+  longitude: number | string;
+  hubType: string;
+  managerName: string | null;
+  managerEmail: string | null;
+  isActive: boolean;
+  createdAt?: string;
+  riskScore?: RiskScore;
+  weatherEvent?: WeatherEvent;
 }
 
 export interface HubListResponse { hubs: Hub[]; total: number; }
 
 export interface HubDetail extends Hub {
-  connected_routes: number;
-  shipment_count: number;
+  originRoutes?: unknown[];
+  destinationRoutes?: unknown[];
 }
 
+/** @deprecated Use ShipmentListItem — kept for map page compatibility */
 export interface Shipment {
   id: number;
   tracking_id: string;
@@ -178,13 +208,76 @@ export interface Shipment {
   created_at: string;
 }
 
-export interface ShipmentListResponse { shipments: Shipment[]; total: number; }
+export interface ShipmentListItem {
+  id: number;
+  trackingId: string;
+  originHubId: number;
+  destinationHubId: number;
+  currentHubId: number | null;
+  status: string;
+  priority: string;
+  weightKg: number | string | null;
+  plannedRoute: number[];
+  activeRoute: number[];
+  plannedRouteNames: string[] | null;
+  activeRouteNames: string[] | null;
+  eta: string | null;
+  createdAt: string;
+  updatedAt: string;
+  originHub: Hub;
+  destinationHub: Hub;
+  currentHub?: Hub | null;
+}
+
+export interface ShipmentRouteChange {
+  id: number;
+  shipmentId: number;
+  oldRoute: number[];
+  newRoute: number[];
+  oldRouteNames: string[] | null;
+  newRouteNames: string[] | null;
+  reason: string;
+  riskLevelTriggered: string | null;
+  triggeredByHubId: number | null;
+  agentDecisionLog: string | null;
+  webhookFired: boolean;
+  createdAt: string;
+}
+
+export interface ShipmentAlert {
+  id: number;
+  routeChangeId: number | null;
+  shipmentId: number | null;
+  channel: string;
+  recipient: string | null;
+  subject: string | null;
+  message: string;
+  isAnomalyAlert: boolean;
+  status: string;
+  sentAt: string;
+}
+
+export interface ShipmentDetail extends ShipmentListItem {
+  routeChanges: ShipmentRouteChange[];
+  alerts: ShipmentAlert[];
+}
+
+export interface ShipmentListResponse { shipments: ShipmentListItem[]; total: number; }
 export interface ShipmentParams { status?: string; priority?: string; }
 export interface CreateShipmentBody {
   originHubId: number;
   destinationHubId: number;
-  priority: string;
-  weightKg: number;
+  priority?: string;
+  weightKg?: number;
+}
+
+export interface ShipmentStats {
+  total: number;
+  active: number;
+  rerouted: number;
+  delayed: number;
+  delivered: number;
+  at_risk: number;
 }
 
 export interface AlertParams { status?: string; channel?: string; }
@@ -255,36 +348,44 @@ export interface GraphStateResponse {
 
 export interface RiskScore {
   id: number;
-  hub_id: number;
-  weather_event_id: number | null;
-  delay_probability: number;
-  risk_level: string;
-  shap_values: Record<string, number> | null;
-  top_risk_factors: string[] | null;
-  human_explanation: string | null;
-  model_version: string;
-  computed_at: string;
-  valid_until: string | null;
+  hubId: number;
+  weatherEventId: number | null;
+  delayProbability: number | string;
+  riskLevel: string;
+  shapValues: Record<string, number> | null;
+  topRiskFactors: string[] | null;
+  humanExplanation: string | null;
+  modelVersion: string;
+  computedAt: string;
+  validUntil: string | null;
+  /** Legacy snake_case aliases for map components */
+  hub_id?: number;
+  delay_probability?: number;
+  risk_level?: string;
+  shap_values?: Record<string, number> | null;
+  top_risk_factors?: string[] | null;
+  human_explanation?: string | null;
+  computed_at?: string;
 }
 
 export interface RiskScoreListResponse {
-  scores: (RiskScore & { hub?: Hub })[];
+  scores: RiskScore[];
   total: number;
 }
 
 export interface WeatherEvent {
   id: number;
-  hub_id: number;
-  condition: string;
-  condition_code: number;
-  temperature: number;
-  feels_like: number;
-  humidity: number;
-  precipitation_mm: number;
-  wind_speed_kmh: number;
-  visibility_km: number;
-  forecast_for: string;
-  fetched_at: string;
+  hubId: number;
+  condition: string | null;
+  conditionCode: number | null;
+  temperature: number | string | null;
+  feelsLike: number | string | null;
+  humidity: number | null;
+  precipitationMm: number | string | null;
+  windSpeedKmh: number | string | null;
+  visibilityKm: number | string | null;
+  forecastFor: string;
+  fetchedAt: string;
 }
 
 export interface WorkflowResult {

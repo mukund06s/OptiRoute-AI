@@ -31,10 +31,20 @@ export function riskBadgeClass(level: string): string {
 export function statusBadgeClass(status: string): string {
   switch (status?.toLowerCase()) {
     case 'at_risk':    return 'bg-red-500/20 text-red-400 border border-red-500/30';
+    case 'rerouted':   return 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/30';
     case 'delayed':    return 'bg-orange-500/20 text-orange-400 border border-orange-500/30';
     case 'in_transit': return 'bg-blue-500/20 text-blue-400 border border-blue-500/30';
     case 'delivered':  return 'bg-green-500/20 text-green-400 border border-green-500/30';
     default:           return 'bg-slate-500/20 text-slate-400 border border-slate-500/30';
+  }
+}
+
+/** Priority → display badge class */
+export function priorityBadgeClass(priority: string): string {
+  switch (priority?.toLowerCase()) {
+    case 'critical': return 'bg-red-500/20 text-red-400 border border-red-500/30';
+    case 'express':  return 'bg-blue-500/20 text-blue-400 border border-blue-500/30';
+    default:         return 'bg-slate-500/20 text-slate-400 border border-slate-500/30';
   }
 }
 

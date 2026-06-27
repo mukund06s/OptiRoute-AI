@@ -15,8 +15,10 @@ interface HubMarkerProps {
  * Color-coded by risk level, clickable to open detail panel
  */
 export function HubMarker({ hub, onClick }: HubMarkerProps) {
-  const riskLevel = hub.risk_score?.risk_level ?? 'low';
+  const riskLevel = hub.riskScore?.riskLevel ?? 'low';
   const color = riskMarkerColor(riskLevel);
+  const lat = Number(hub.latitude);
+  const lng = Number(hub.longitude);
 
   // Create custom colored marker
   const icon = new DivIcon({
@@ -38,7 +40,7 @@ export function HubMarker({ hub, onClick }: HubMarkerProps) {
 
   return (
     <Marker
-      position={[hub.latitude, hub.longitude]}
+      position={[lat, lng]}
       icon={icon}
       eventHandlers={{
         click: () => onClick(hub),

@@ -24,9 +24,18 @@ export function HubDetailPanel({ hub, onClose }: HubDetailPanelProps) {
     staleTime: 30_000,
   });
 
-  const riskScore = hub.risk_score;
-  const weather = hub.weather_event;
-  const riskLevel = riskScore?.risk_level ?? 'low';
+  const riskScore = hub.riskScore;
+  const weather = hub.weatherEvent;
+  const riskLevel = riskScore?.riskLevel ?? 'low';
+  const delayProbability =
+    riskScore?.delayProbability != null
+      ? typeof riskScore.delayProbability === 'string'
+        ? parseFloat(riskScore.delayProbability)
+        : riskScore.delayProbability
+      : 0;
+
+  const connectedRoutes =
+    (hubDetail?.originRoutes?.length ?? 0) + (hubDetail?.destinationRoutes?.length ?? 0);
 
   return (
     <div className="absolute top-4 right-4 z-[1000] w-96 max-h-[calc(100vh-2rem)] overflow-y-auto bg-slate-800/95 backdrop-blur-sm border border-slate-700 rounded-lg shadow-2xl">
@@ -62,11 +71,11 @@ export function HubDetailPanel({ hub, onClose }: HubDetailPanelProps) {
               <div className="flex items-center justify-between">
                 <span className="text-xs text-slate-400">Delay Probability</span>
                 <span className="text-sm font-bold text-slate-100">
-                  {(riskScore.delay_probability * 100).toFixed(1)}%
+                  {(delayProbability * 100).toFixed(1)}%
                 </span>
               </div>
               <div className="text-xs text-slate-500">
-                Computed {formatDateTime(riskScore.computed_at)}
+                Computed {riskScore.computedAt ? formatDateTime(riskScore.computedAt) : '—'}
               </div>
             </div>
           </div>
@@ -98,14 +107,14 @@ export function HubDetailPanel({ hub, onClose }: HubDetailPanelProps) {
                   <Droplets className="w-3.5 h-3.5 text-slate-500" />
                   <div>
                     <div className="text-xs text-slate-500">Rain</div>
-                    <div className="text-xs font-semibold text-slate-200">{weather.precipitation_mm}mm</div>
+                    <div className="text-xs font-semibold text-slate-200">{weather.precipitationMm}mm</div>
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
                   <Wind className="w-3.5 h-3.5 text-slate-500" />
                   <div>
                     <div className="text-xs text-slate-500">Wind</div>
-                    <div className="text-xs font-semibold text-slate-200">{weather.wind_speed_kmh} km/h</div>
+                    <div className="text-xs font-semibold text-slate-200">{weather.windSpeedKmh} km/h</div>
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
@@ -119,7 +128,7 @@ export function HubDetailPanel({ hub, onClose }: HubDetailPanelProps) {
                   <Eye className="w-3.5 h-3.5 text-slate-500" />
                   <div>
                     <div className="text-xs text-slate-500">Visibility</div>
-                    <div className="text-xs font-semibold text-slate-200">{weather.visibility_km} km</div>
+                    <div className="text-xs font-semibold text-slate-200">{weather.visibilityKm} km</div>
                   </div>
                 </div>
               </div>
@@ -143,18 +152,18 @@ export function HubDetailPanel({ hub, onClose }: HubDetailPanelProps) {
             <div className="grid grid-cols-2 gap-2">
               <div className="bg-slate-900/50 rounded-lg p-3">
                 <div className="text-xs text-slate-500 mb-1">Connected Routes</div>
-                <div className="text-lg font-bold text-slate-100">{hubDetail.connected_routes ?? 0}</div>
+                <div className="text-lg font-bold text-slate-100">{connectedRoutes}</div>
               </div>
               <div className="bg-slate-900/50 rounded-lg p-3">
                 <div className="text-xs text-slate-500 mb-1">Active Shipments</div>
-                <div className="text-lg font-bold text-slate-100">{hubDetail.shipment_count ?? 0}</div>
+                <div className="text-lg font-bold text-slate-100">—</div>
               </div>
             </div>
           </div>
         )}
 
         {/* SHAP Explanation */}
-        {riskScore && riskScore.shap_values && (
+        {riskScore && riskScore.shapValues && (
           <div>
             <div className="bg-slate-900/50 rounded-lg p-3">
               <SHAPExplanationWidget riskScore={riskScore} />
@@ -168,10 +177,10 @@ export function HubDetailPanel({ hub, onClose }: HubDetailPanelProps) {
             Hub Manager
           </div>
           <div className="bg-slate-900/50 rounded-lg p-3 space-y-1">
-            <div className="text-sm font-semibold text-slate-100">{hub.manager_name}</div>
-            <div className="text-xs text-slate-400">{hub.manager_email}</div>
+            <div className="text-sm font-semibold text-slate-100">{hub.managerName ?? '—'}</div>
+            <div className="text-xs text-slate-400">{hub.managerEmail ?? '—'}</div>
             <div className="text-xs text-slate-500 mt-2">
-              Type: {titleCase(hub.hub_type)}
+              Type: {titleCase(hub.hubType)}
             </div>
           </div>
         </div>
