@@ -83,3 +83,13 @@ export function truncate(str: string, maxLen = 30): string {
   if (str.length <= maxLen) return str;
   return str.slice(0, maxLen - 1) + '…';
 }
+
+/** Risk level → hex color for map markers */
+export function riskMarkerColor(level: string): string {
+  switch (level?.toLowerCase()) {
+    case 'critical': return '#ef4444'; // red-500
+    case 'high':     return '#fb923c'; // orange-400
+    case 'medium':   return '#fbbf24'; // yellow-400
+    default:         return '#22c55e'; // green-500
+  }
+}

@@ -86,7 +86,7 @@ export const api = {
 
 export const hubsApi = {
   list:         ()         => api.get<HubListResponse>('/hubs'),
-  getById:      (id: number) => api.get<Hub>(`/hubs/${id}`),
+  getById:      (id: number) => api.get<HubDetail>(`/hubs/${id}`),
 };
 
 export const shipmentsApi = {
@@ -102,6 +102,11 @@ export const shipmentsApi = {
 
 export const routingApi = {
   graphState:   () => api.get<GraphStateResponse>('/routing/graph-state'),
+};
+
+export const riskApi = {
+  scores:       () => api.get<RiskScoreListResponse>('/risk/scores'),
+  scoresByHub:  (hubId: number) => api.get<RiskScore>(`/risk/scores/${hubId}`),
 };
 
 export const alertsApi = {
@@ -147,9 +152,16 @@ export interface Hub {
   manager_name: string;
   manager_email: string;
   is_active: boolean;
+  risk_score?: RiskScore;
+  weather_event?: WeatherEvent;
 }
 
 export interface HubListResponse { hubs: Hub[]; total: number; }
+
+export interface HubDetail extends Hub {
+  connected_routes: number;
+  shipment_count: number;
+}
 
 export interface Shipment {
   id: number;
@@ -239,6 +251,40 @@ export interface GraphStateResponse {
   nodes: number;
   edges: number;
   hubs: { id: number; name: string }[];
+}
+
+export interface RiskScore {
+  id: number;
+  hub_id: number;
+  weather_event_id: number | null;
+  delay_probability: number;
+  risk_level: string;
+  shap_values: Record<string, number> | null;
+  top_risk_factors: string[] | null;
+  human_explanation: string | null;
+  model_version: string;
+  computed_at: string;
+  valid_until: string | null;
+}
+
+export interface RiskScoreListResponse {
+  scores: (RiskScore & { hub?: Hub })[];
+  total: number;
+}
+
+export interface WeatherEvent {
+  id: number;
+  hub_id: number;
+  condition: string;
+  condition_code: number;
+  temperature: number;
+  feels_like: number;
+  humidity: number;
+  precipitation_mm: number;
+  wind_speed_kmh: number;
+  visibility_km: number;
+  forecast_for: string;
+  fetched_at: string;
 }
 
 export interface WorkflowResult {
