@@ -151,10 +151,18 @@ export const alertsApi = {
 };
 
 export const agentsApi = {
-  status:       () => api.get<AgentStatus>('/agents/status'),
-  logs:         () => api.get<AgentLog[]>('/agents/logs'),
-  logsByCycle:  (cycleId: string) => api.get<AgentLog[]>(`/agents/logs/${cycleId}`),
-  runCycle:     () => api.post<RunCycleResponse>('/agents/run-cycle', {}),
+  status: async () => {
+    const res = await api.get<ApiDataResponse<AgentStatus>>('/agents/status');
+    return res.data;
+  },
+  logs: async () => {
+    const res = await api.get<ApiDataResponse<AgentLogItem[]>>('/agents/logs');
+    return { logs: res.data, total: res.data.length };
+  },
+  logsByCycle: async (cycleId: string) => {
+    const res = await api.get<ApiDataResponse<AgentLogItem[]>>(`/agents/logs/${cycleId}`);
+    return { logs: res.data, total: res.data.length };
+  },
 };
 
 export const dashboardApi = {
@@ -164,8 +172,18 @@ export const dashboardApi = {
 export const workflowApi = {
   execute:      (shipmentId: number) => api.post<WorkflowResult>('/workflow/execute', { shipmentId }),
   executeBatch: (shipmentIds: number[]) => api.post<BatchWorkflowResult>('/workflow/execute-batch', { shipmentIds }),
-  status:       (workflowId: string) => api.get<WorkflowStatus>(`/workflow/status/${workflowId}`),
-  history:      () => api.get<WorkflowHistory>('/workflow/history'),
+  status:       (workflowId: string) => api.get<WorkflowExecutionDetail>(`/workflow/status/${workflowId}`),
+  history:      (params?: { limit?: number; offset?: number; status?: string }) => {
+    const qs = params
+      ? '?' + new URLSearchParams(
+          Object.entries(params).reduce((acc, [k, v]) => {
+            if (v !== undefined) acc[k] = String(v);
+            return acc;
+          }, {} as Record<string, string>),
+        ).toString()
+      : '';
+    return api.get<WorkflowHistoryResponse>(`/workflow/history${qs}`);
+  },
 };
 
 /* ------------------------------------------------------------------ */
@@ -361,8 +379,25 @@ export interface AgentStatus {
   lastRun: string | null;
   nextRun: string | null;
   health: string;
+  averageExecutionTimeMs?: number;
+  errors?: string[];
 }
 
+export interface AgentLogItem {
+  id: number;
+  agentName: string;
+  action: string;
+  inputData: Record<string, unknown> | null;
+  outputData: Record<string, unknown> | null;
+  durationMs: number | null;
+  status: string | null;
+  errorMessage: string | null;
+  shipmentId: number | null;
+  hubId: number | null;
+  createdAt: string;
+}
+
+/** @deprecated Use AgentLogItem */
 export interface AgentLog {
   id: number;
   agent_name: string;
@@ -372,6 +407,21 @@ export interface AgentLog {
   shipment_id: number | null;
   hub_id: number | null;
   created_at: string;
+}
+
+export interface AgentCycleSummary {
+  cycleId: string;
+  workflowId?: string;
+  executionTime: string;
+  status: string;
+  supervisorStatus: string;
+  weatherStatus: string;
+  riskStatus: string;
+  routingStatus: string;
+  communicationStatus: string;
+  durationMs: number | null;
+  warnings: string[];
+  errors: string[];
 }
 
 export interface RunCycleResponse { cycleId: string; status: string; }
@@ -459,6 +509,42 @@ export interface BatchWorkflowResult {
   results: WorkflowResult[];
 }
 
+export interface WorkflowHistoryItem {
+  workflowId: string;
+  cycleId: string;
+  shipmentId?: number;
+  state: string;
+  createdAt?: string;
+  updatedAt?: string;
+  totalSteps: number;
+  completedSteps: number;
+  failedSteps: number;
+  skippedSteps: number;
+}
+
+export interface WorkflowExecutionStep {
+  agent: string;
+  state: string;
+  startedAt?: string;
+  completedAt?: string;
+  error?: string;
+}
+
+export interface WorkflowExecutionDetail extends WorkflowHistoryItem {
+  steps: WorkflowExecutionStep[];
+  errors?: string[];
+}
+
+export interface WorkflowHistoryResponse {
+  success: boolean;
+  total: number;
+  limit: number;
+  offset: number;
+  count: number;
+  workflows: WorkflowHistoryItem[];
+}
+
+/** @deprecated Use WorkflowHistoryItem */
 export interface WorkflowStatus {
   workflowId: string;
   state: string;
@@ -470,5 +556,5 @@ export interface WorkflowStatus {
 
 export interface WorkflowHistory {
   total: number;
-  workflows: WorkflowStatus[];
+  workflows: WorkflowHistoryItem[];
 }

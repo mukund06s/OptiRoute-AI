@@ -60,6 +60,22 @@ export function severityBadgeClass(severity: string): string {
   }
 }
 
+/** Agent log/step status → display badge class */
+export function agentStatusBadgeClass(status: string): string {
+  switch (status?.toLowerCase()) {
+    case 'success':
+    case 'completed':
+      return 'bg-green-500/20 text-green-400 border border-green-500/30';
+    case 'error':
+    case 'failed':
+      return 'bg-red-500/20 text-red-400 border border-red-500/30';
+    case 'skipped':
+      return 'bg-slate-500/20 text-slate-400 border border-slate-500/30';
+    default:
+      return 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/30';
+  }
+}
+
 /** Priority → display badge class */
 export function priorityBadgeClass(priority: string): string {
   switch (priority?.toLowerCase()) {
