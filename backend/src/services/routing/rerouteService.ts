@@ -1,8 +1,12 @@
 import { prisma } from '../../lib/prisma';
-import { GraphBuilder } from './graphBuilder';
-import { dijkstra, DijkstraResult } from './dijkstra';
-import { calculateWeightedGraph } from './weightCalculator';
+import { GraphBuilder, Graph } from './graphBuilder';
+import { dijkstra } from './dijkstra';
 import type { RiskScore } from './weightCalculator';
+
+export interface WeightedGraphContext {
+  graph: Graph;
+  riskScores: Map<number, RiskScore>;
+}
 
 export interface OptimalRouteResult {
   path: number[];
@@ -57,30 +61,22 @@ export class RerouteService {
         hubId: score.hubId,
         riskLevel: score.riskLevel.toUpperCase(),
         riskScore: Number(score.delayProbability),
+        id: score.id,
       });
     }
 
     return {
       graph,
       riskScores: riskScoresMap,
-      weightedGraph: calculateWeightedGraph(graph, riskScoresMap),
     };
   }
 
-  async calculateOptimalRoute(
+  private async resolveRouteFromGraph(
+    graph: Graph,
     originHubId: number,
     destinationHubId: number,
-    riskScores?: Map<number, RiskScore>
+    riskScoresMap: Map<number, RiskScore>
   ): Promise<OptimalRouteResult> {
-    const builder = new GraphBuilder();
-    const { graph } = await builder.buildGraph();
-
-    let riskScoresMap = riskScores;
-    if (!riskScoresMap) {
-      const result = await this.buildWeightedGraph();
-      riskScoresMap = result.riskScores;
-    }
-
     const dijkstraResult = dijkstra(graph, originHubId, destinationHubId, {
       riskScores: riskScoresMap,
     });
@@ -108,6 +104,28 @@ export class RerouteService {
     };
   }
 
+  async calculateOptimalRoute(
+    originHubId: number,
+    destinationHubId: number,
+    riskScores?: Map<number, RiskScore>,
+    graph?: Graph
+  ): Promise<OptimalRouteResult> {
+    if (graph && riskScores) {
+      return this.resolveRouteFromGraph(graph, originHubId, destinationHubId, riskScores);
+    }
+
+    const weighted = await this.buildWeightedGraph();
+    const resolvedGraph = graph ?? weighted.graph;
+    const riskScoresMap = riskScores ?? weighted.riskScores;
+
+    return this.resolveRouteFromGraph(
+      resolvedGraph,
+      originHubId,
+      destinationHubId,
+      riskScoresMap
+    );
+  }
+
   compareRoutes(oldRoute: number[], newRoute: number[]): RouteComparisonResult {
     const oldPathStr = oldRoute.join(',');
     const newPathStr = newRoute.join(',');
@@ -122,7 +140,10 @@ export class RerouteService {
     };
   }
 
-  async checkAndRerouteShipment(shipmentId: number): Promise<RerouteResult> {
+  async checkAndRerouteShipment(
+    shipmentId: number,
+    prebuilt?: WeightedGraphContext
+  ): Promise<RerouteResult> {
     const shipment = await prisma.shipment.findUnique({
       where: { id: shipmentId },
       include: {
@@ -156,14 +177,15 @@ export class RerouteService {
       };
     }
 
-    const { graph, riskScores } = await this.buildWeightedGraph();
+    const { graph, riskScores } = prebuilt ?? (await this.buildWeightedGraph());
 
     let newRoute: OptimalRouteResult;
     try {
       newRoute = await this.calculateOptimalRoute(
         shipment.currentHub.id,
         shipment.destinationHubId,
-        riskScores
+        riskScores,
+        graph
       );
     } catch (error) {
       return {
@@ -176,7 +198,8 @@ export class RerouteService {
     }
 
     const oldRoute = shipment.activeRoute as number[];
-    const oldRouteFromCurrent = oldRoute.slice(oldRoute.indexOf(shipment.currentHub.id));
+    const currentHubIndex = oldRoute.indexOf(shipment.currentHub.id);
+    const oldRouteFromCurrent = oldRoute.slice(currentHubIndex);
 
     const comparison = this.compareRoutes(oldRouteFromCurrent, newRoute.path);
 
@@ -191,14 +214,14 @@ export class RerouteService {
     }
 
     const fullNewRoute = [
-      ...oldRoute.slice(0, oldRoute.indexOf(shipment.currentHub.id)),
+      ...oldRoute.slice(0, currentHubIndex),
       ...newRoute.path,
     ];
 
     const oldRouteNames = shipment.activeRouteNames as string[];
 
     const fullNewRouteNames = [
-      ...oldRouteNames.slice(0, oldRoute.indexOf(shipment.currentHub.id)),
+      ...oldRouteNames.slice(0, currentHubIndex),
       ...newRoute.pathNames,
     ];
 
@@ -206,14 +229,8 @@ export class RerouteService {
       oldRouteFromCurrent.includes(flag.hubId)
     );
 
-    const triggeredByRiskScore = triggeredByRisk
-      ? await prisma.riskScore.findFirst({
-          where: {
-            hubId: triggeredByRisk.hubId,
-            validUntil: { gte: new Date() },
-          },
-          orderBy: { computedAt: 'desc' },
-        })
+    const triggeredByRiskScoreId = triggeredByRisk
+      ? riskScores.get(triggeredByRisk.hubId)?.id ?? null
       : null;
 
     let reason = 'Route optimization based on current conditions';
@@ -234,7 +251,7 @@ export class RerouteService {
         reason,
         riskLevelTriggered: triggeredByRisk?.riskLevel.toLowerCase() || null,
         triggeredByHubId: triggeredByRisk?.hubId || null,
-        triggeredByRiskScoreId: triggeredByRiskScore?.id || null,
+        triggeredByRiskScoreId: triggeredByRiskScoreId,
         agentDecisionLog: null,
         webhookFired: false,
       },
@@ -271,10 +288,11 @@ export class RerouteService {
     });
 
     const results: RerouteResult[] = [];
+    const prebuilt = await this.buildWeightedGraph();
 
     for (const shipment of shipments) {
       try {
-        const result = await this.checkAndRerouteShipment(shipment.id);
+        const result = await this.checkAndRerouteShipment(shipment.id, prebuilt);
         results.push(result);
       } catch (error) {
         console.error(`Error rerouting shipment ${shipment.id}:`, error);

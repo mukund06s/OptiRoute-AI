@@ -1,3 +1,4 @@
+import asyncio
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
@@ -68,7 +69,7 @@ async def predict_risk(request: PredictionRequest):
 
     try:
         request_dict = request.model_dump()
-        result = prediction_service.predict(request_dict)
+        result = await asyncio.to_thread(prediction_service.predict, request_dict)
         return result
 
     except ValueError as e:

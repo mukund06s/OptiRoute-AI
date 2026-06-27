@@ -7,7 +7,7 @@ import { GitBranch, CheckCircle2, XCircle, SkipForward } from 'lucide-react';
 
 export function WorkflowStatusPanel() {
   const { data, isLoading, isError } = useQuery({
-    queryKey:  ['workflow', 'history'],
+    queryKey:  ['workflow', 'history', {}],
     queryFn:   () => workflowApi.history(),
     staleTime: 30_000,
     refetchInterval: 30_000,

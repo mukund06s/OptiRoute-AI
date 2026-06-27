@@ -277,7 +277,7 @@ export class RoutingAgent {
     const hubsAdded = newRoute.filter((hubId) => !oldSet.has(hubId));
     const hubsRemoved = oldRoute.filter((hubId) => !newSet.has(hubId));
 
-    const sequenceChanged = JSON.stringify(oldRoute) !== JSON.stringify(newRoute);
+    const sequenceChanged = oldRoute.join(',') !== newRoute.join(',');
 
     return {
       hubsAdded,

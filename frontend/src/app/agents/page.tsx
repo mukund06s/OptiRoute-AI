@@ -65,7 +65,7 @@ export default function AgentsPage() {
     isLoading: workflowLoading,
     isError: workflowError,
   } = useQuery({
-    queryKey: ['workflow', 'history'],
+    queryKey: ['workflow', 'history', { limit: 50 }],
     queryFn: () => workflowApi.history({ limit: 50 }),
     staleTime: STALE,
     refetchInterval: REFETCH,

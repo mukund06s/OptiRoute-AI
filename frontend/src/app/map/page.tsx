@@ -1,10 +1,12 @@
 'use client';
 
-import { useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import dynamic from 'next/dynamic';
 import { hubsApi, shipmentsApi, type Hub, type ShipmentListItem } from '@/lib/api';
 import { Loader2, AlertCircle } from 'lucide-react';
+
+const REFRESH_MS = 30_000;
 
 // Dynamic imports to avoid SSR issues with Leaflet
 const MapContainer = dynamic(() => import('@/components/map').then((mod) => mod.MapContainer), {
@@ -22,6 +24,15 @@ const RiskLegend = dynamic(() => import('@/components/map').then((mod) => mod.Ri
 const MapToolbar = dynamic(() => import('@/components/map').then((mod) => mod.MapToolbar), { ssr: false });
 const HubDetailPanel = dynamic(() => import('@/components/map').then((mod) => mod.HubDetailPanel), { ssr: false });
 
+function routePositions(hubCoords: Map<number, [number, number]>, route: number[]): [number, number][] {
+  const positions: [number, number][] = [];
+  for (const hubId of route) {
+    const coords = hubCoords.get(hubId);
+    if (coords) positions.push(coords);
+  }
+  return positions;
+}
+
 /**
  * Map Page — Interactive logistics map
  * Displays hubs with risk coloring, routes, and hub details
@@ -32,7 +43,6 @@ export default function MapPage() {
   const [selectedHub, setSelectedHub] = useState<Hub | null>(null);
   const [showRoutes, setShowRoutes] = useState(true);
 
-  // Fetch hubs with risk scores (auto-refresh every 30s)
   const {
     data: hubsData,
     isLoading: hubsLoading,
@@ -40,23 +50,69 @@ export default function MapPage() {
   } = useQuery({
     queryKey: ['hubs'],
     queryFn: hubsApi.list,
-    staleTime: 30_000,
+    staleTime: REFRESH_MS,
+    refetchInterval: REFRESH_MS,
   });
 
-  // Fetch active shipments for route visualization
   const {
     data: shipmentsData,
     isLoading: shipmentsLoading,
   } = useQuery({
-    queryKey: ['shipments', 'in_transit'],
+    queryKey: ['shipments', { status: 'in_transit' }],
     queryFn: () => shipmentsApi.list({ status: 'in_transit' }),
-    staleTime: 30_000,
+    staleTime: REFRESH_MS,
+    refetchInterval: REFRESH_MS,
   });
 
-  const hubs = hubsData?.hubs ?? [];
-  const shipments = shipmentsData?.shipments ?? [];
+  const hubs = useMemo(() => hubsData?.hubs ?? [], [hubsData?.hubs]);
+  const shipments = useMemo(() => shipmentsData?.shipments ?? [], [shipmentsData?.shipments]);
 
-  // Loading state
+  const hubCoords = useMemo(
+    () =>
+      new Map<number, [number, number]>(
+        hubs.map((hub) => [hub.id, [Number(hub.latitude), Number(hub.longitude)]]),
+      ),
+    [hubs],
+  );
+
+  const routeOverlays = useMemo(
+    () =>
+      shipments.flatMap((shipment: ShipmentListItem) => {
+        const overlays: Array<{ key: string; positions: [number, number][]; isActive: boolean }> = [];
+
+        if (shipment.plannedRoute && shipment.plannedRoute.length > 1) {
+          overlays.push({
+            key: `${shipment.id}-planned`,
+            positions: routePositions(hubCoords, shipment.plannedRoute),
+            isActive: false,
+          });
+        }
+
+        if (
+          shipment.activeRoute &&
+          shipment.activeRoute.length > 1 &&
+          shipment.activeRoute.join(',') !== shipment.plannedRoute?.join(',')
+        ) {
+          overlays.push({
+            key: `${shipment.id}-active`,
+            positions: routePositions(hubCoords, shipment.activeRoute),
+            isActive: true,
+          });
+        }
+
+        return overlays;
+      }),
+    [shipments, hubCoords],
+  );
+
+  const handleToggleRoutes = useCallback(() => {
+    setShowRoutes((prev) => !prev);
+  }, []);
+
+  const handleClosePanel = useCallback(() => {
+    setSelectedHub(null);
+  }, []);
+
   if (hubsLoading) {
     return (
       <div className="h-full w-full flex flex-col items-center justify-center bg-slate-900">
@@ -66,7 +122,6 @@ export default function MapPage() {
     );
   }
 
-  // Error state
   if (hubsError) {
     return (
       <div className="h-full w-full flex flex-col items-center justify-center bg-slate-900">
@@ -79,7 +134,6 @@ export default function MapPage() {
     );
   }
 
-  // Empty state
   if (hubs.length === 0) {
     return (
       <div className="h-full w-full flex flex-col items-center justify-center bg-slate-900">
@@ -92,46 +146,32 @@ export default function MapPage() {
 
   return (
     <div className="relative h-full w-full">
-      {/* Map Container */}
       <MapContainer>
-        {/* Hub Markers */}
         {hubs.map((hub) => (
           <HubMarker key={hub.id} hub={hub} onClick={setSelectedHub} />
         ))}
 
-        {/* Route Polylines */}
         {showRoutes &&
           !shipmentsLoading &&
-          shipments.map((shipment: ShipmentListItem) => (
-            <div key={shipment.id}>
-              {/* Planned route (dashed grey) */}
-              {shipment.plannedRoute && shipment.plannedRoute.length > 1 && (
-                <RoutePolyline hubs={hubs} route={shipment.plannedRoute} isActive={false} />
-              )}
-              {/* Active route (solid blue) - only if different from planned */}
-              {shipment.activeRoute &&
-                shipment.activeRoute.length > 1 &&
-                JSON.stringify(shipment.activeRoute) !== JSON.stringify(shipment.plannedRoute) && (
-                  <RoutePolyline hubs={hubs} route={shipment.activeRoute} isActive={true} />
-                )}
-            </div>
+          routeOverlays.map((overlay) => (
+            <RoutePolyline
+              key={overlay.key}
+              positions={overlay.positions}
+              isActive={overlay.isActive}
+            />
           ))}
       </MapContainer>
 
-      {/* Map Controls - Top Left */}
       <div className="absolute top-4 left-4 z-[1000]">
-        <MapToolbar showRoutes={showRoutes} onToggleRoutes={() => setShowRoutes(!showRoutes)} />
+        <MapToolbar showRoutes={showRoutes} onToggleRoutes={handleToggleRoutes} />
       </div>
 
-      {/* Legend - Bottom Left */}
       <div className="absolute bottom-4 left-4 z-[1000]">
         <RiskLegend />
       </div>
 
-      {/* Hub Detail Panel - Right Side */}
-      {selectedHub && <HubDetailPanel hub={selectedHub} onClose={() => setSelectedHub(null)} />}
+      {selectedHub && <HubDetailPanel hub={selectedHub} onClose={handleClosePanel} />}
 
-      {/* Loading Overlay for Shipments */}
       {shipmentsLoading && showRoutes && (
         <div className="absolute top-20 left-4 z-[1000] bg-slate-800/95 backdrop-blur-sm border border-slate-700 rounded-lg p-3 shadow-lg">
           <div className="flex items-center gap-2 text-slate-300 text-xs">

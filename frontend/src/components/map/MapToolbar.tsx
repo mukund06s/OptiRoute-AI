@@ -15,7 +15,9 @@ export function MapToolbar({ showRoutes, onToggleRoutes }: MapToolbarProps) {
   const queryClient = useQueryClient();
 
   const handleRefresh = () => {
-    queryClient.invalidateQueries();
+    queryClient.invalidateQueries({ queryKey: ['hubs'] });
+    queryClient.invalidateQueries({ queryKey: ['shipments'] });
+    queryClient.invalidateQueries({ queryKey: ['risk'] });
   };
 
   return (

@@ -6,7 +6,6 @@ Handles model loading, preprocessing, prediction, and SHAP explanation
 import pickle
 import json
 import numpy as np
-import pandas as pd
 import os
 import time
 from typing import Dict, Any
@@ -83,7 +82,12 @@ class PredictionService:
             print(f"  [OK] Loaded scaler")
 
             self.explainer = RiskExplainer(models_dir=self.models_dir)
-            if not self.explainer.initialize():
+            if not self.explainer.initialize(
+                model=self.model,
+                label_encoder=self.label_encoder,
+                feature_columns=self.feature_columns,
+                target_classes=self.target_classes,
+            ):
                 print("  [WARNING] SHAP explainer initialization failed")
                 return False
             print(f"  [OK] Initialized SHAP explainer")
@@ -115,36 +119,34 @@ class PredictionService:
     def preprocess_request(self, request_data: Dict[str, Any]) -> np.ndarray:
         """
         Preprocess request data for model inference
-        
-        Args:
-            request_data: Raw request dictionary
-            
-        Returns:
-            Preprocessed feature array
         """
-        df = pd.DataFrame([request_data])
+        row = np.zeros((1, len(self.feature_columns)), dtype=np.float64)
 
-        for feature in self.feature_columns:
-            if feature not in df.columns:
+        for idx, feature in enumerate(self.feature_columns):
+            if feature not in request_data:
                 raise ValueError(f"Missing feature: {feature}")
 
-        df = df[self.feature_columns]
+            value = request_data[feature]
 
-        for cat_feature in self.categorical_features:
-            if cat_feature in self.categorical_encoders:
-                encoder = self.categorical_encoders[cat_feature]
-                value = str(df[cat_feature].iloc[0])
-
-                if value in encoder.classes_:
-                    df[cat_feature] = encoder.transform([value])
+            if feature in self.categorical_features:
+                encoder = self.categorical_encoders.get(feature)
+                if encoder is not None:
+                    encoded = encoder.transform([str(value)])[0]
+                    row[0, idx] = encoded if str(value) in encoder.classes_ else -1
                 else:
-                    df[cat_feature] = -1
+                    row[0, idx] = 0
             else:
-                df[cat_feature] = 0
+                row[0, idx] = float(value)
 
-        df[self.numerical_features] = self.scaler.transform(df[self.numerical_features])
+        numerical_indices = [
+            self.feature_columns.index(feature)
+            for feature in self.numerical_features
+            if feature in self.feature_columns
+        ]
+        if numerical_indices:
+            row[:, numerical_indices] = self.scaler.transform(row[:, numerical_indices])
 
-        return df.values
+        return row
 
     def predict(self, request_data: Dict[str, Any]) -> Dict[str, Any]:
         """
@@ -176,7 +178,9 @@ class PredictionService:
             for i in range(len(self.target_classes))
         }
 
-        explanation = self.explainer.explain_prediction(X[0], return_details=False)
+        explanation = self.explainer.explain_from_prediction(
+            X[0], prediction_encoded, confidence, return_details=False
+        )
 
         human_explanation = self.explainer.generate_human_explanation(explanation)
 

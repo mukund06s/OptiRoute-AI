@@ -22,7 +22,14 @@ export function TopBar() {
 
   const handleRefresh = async () => {
     setRefreshing(true);
-    await qc.invalidateQueries();
+    await qc.invalidateQueries({ queryKey: ['hubs'] });
+    await qc.invalidateQueries({ queryKey: ['shipments'] });
+    await qc.invalidateQueries({ queryKey: ['routes'] });
+    await qc.invalidateQueries({ queryKey: ['risk'] });
+    await qc.invalidateQueries({ queryKey: ['alerts'] });
+    await qc.invalidateQueries({ queryKey: ['agents'] });
+    await qc.invalidateQueries({ queryKey: ['workflow'] });
+    await qc.invalidateQueries({ queryKey: ['dashboard'] });
     setTimeout(() => setRefreshing(false), 600);
   };
 

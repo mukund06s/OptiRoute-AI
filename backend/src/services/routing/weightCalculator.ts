@@ -4,6 +4,7 @@ export interface RiskScore {
   hubId: number;
   riskLevel: string;
   riskScore: number;
+  id?: number;
 }
 
 const DISTANCE_FACTOR = 1.0;
@@ -72,7 +73,8 @@ export function getEdgeWeight(
   edge: Edge,
   riskScores?: Map<number, RiskScore>
 ): number {
-  const riskScore = riskScores?.get(edge.destinationHubId);
-  const weightedEdge = calculateWeightedEdge(edge, riskScore);
-  return weightedEdge.compositeWeight;
+  const baseWeight = calculateBaseWeight(edge);
+  const riskLevel = riskScores?.get(edge.destinationHubId)?.riskLevel ?? 'LOW';
+  const riskMultiplier = calculateRiskMultiplier(riskLevel);
+  return calculateCompositeWeight(baseWeight, riskMultiplier);
 }

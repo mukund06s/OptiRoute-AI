@@ -1,6 +1,5 @@
 import { Request, Response } from 'express';
 import { rerouteService } from '../services/routing/rerouteService';
-import { GraphBuilder } from '../services/routing/graphBuilder';
 
 class RoutingController {
   async calculateRoute(req: Request, res: Response): Promise<void> {
@@ -102,14 +101,11 @@ class RoutingController {
 
   async getGraphState(req: Request, res: Response): Promise<void> {
     try {
-      const builder = new GraphBuilder();
-      const { graph, nodeCount, edgeCount } = await builder.buildGraph();
-
-      const { riskScores } = await rerouteService.buildWeightedGraph();
+      const { graph, riskScores } = await rerouteService.buildWeightedGraph();
 
       res.status(200).json({
-        nodeCount,
-        edgeCount,
+        nodeCount: graph.size,
+        edgeCount: Array.from(graph.values()).reduce((sum, edges) => sum + edges.length, 0),
         activeRiskScores: riskScores.size,
         lastGraphBuildTime: new Date().toISOString(),
         nodes: Array.from(graph.keys()),

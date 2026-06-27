@@ -184,13 +184,24 @@ export class RiskAgent {
       },
     });
 
+    const hubs = await prisma.hub.findMany({
+      where: { id: { in: hubIds } },
+      select: { id: true, name: true },
+    });
+    const hubById = new Map(hubs.map((hub) => [hub.id, hub]));
+
+    const weatherByHubId = new Map(
+      (weatherResult?.weatherData ?? []).map((weather) => [weather.hubId, weather])
+    );
+
     const predictions = await Promise.all(
       hubIds.map((hubId) =>
         this.collectPrediction(
           hubId,
           shipment,
           route,
-          weatherResult
+          hubById.get(hubId),
+          weatherByHubId.get(hubId)
         ).catch((error) => {
           console.error(
             `[RiskAgent] Failed to get prediction for hub ${hubId}:`,
@@ -208,17 +219,19 @@ export class RiskAgent {
     hubId: number,
     shipment: any,
     route: any,
-    weatherResult?: WeatherAgentResult
+    hub?: { id: number; name: string } | null,
+    weather?: { condition: string }
   ): Promise<RiskScoreData> {
-    const hub = await prisma.hub.findUnique({
-      where: { id: hubId },
-    });
+    const resolvedHub =
+      hub ??
+      (await prisma.hub.findUnique({
+        where: { id: hubId },
+        select: { id: true, name: true },
+      }));
 
-    if (!hub) {
+    if (!resolvedHub) {
       throw new Error(`Hub not found: ${hubId}`);
     }
-
-    const weather = weatherResult?.weatherData.find((w) => w.hubId === hubId);
 
     const mlRequest: MLPredictionRequest = {
       origin_hub: shipment.originHub.name,
@@ -242,7 +255,7 @@ export class RiskAgent {
 
     const riskScore: RiskScoreData = {
       hubId,
-      hubName: hub.name,
+      hubName: resolvedHub.name,
       predictedRisk: prediction.predicted_class as RiskLevel,
       confidence: prediction.confidence,
       delayProbability: this.calculateDelayProbability(
@@ -428,21 +441,21 @@ export class RiskAgent {
     console.log(`[RiskAgent] Storing ${riskScores.length} risk scores`);
 
     try {
-      await Promise.all(
-        riskScores.map((score) =>
-          prisma.riskScore.create({
-            data: {
-              hubId: score.hubId,
-              delayProbability: score.delayProbability,
-              riskLevel: score.predictedRisk,
-              shapValues: score.shapExplanation.topFeatures,
-              topRiskFactors: score.shapExplanation.positiveContributors,
-              humanExplanation: score.shapExplanation.humanExplanation,
-              modelVersion: 'v1.0',
-            },
-          })
-        )
-      );
+      if (riskScores.length === 0) {
+        return;
+      }
+
+      await prisma.riskScore.createMany({
+        data: riskScores.map((score) => ({
+          hubId: score.hubId,
+          delayProbability: score.delayProbability,
+          riskLevel: score.predictedRisk,
+          shapValues: score.shapExplanation.topFeatures,
+          topRiskFactors: score.shapExplanation.positiveContributors,
+          humanExplanation: score.shapExplanation.humanExplanation,
+          modelVersion: 'v1.0',
+        })),
+      });
 
       console.log('[RiskAgent] Risk scores stored successfully');
     } catch (error: any) {

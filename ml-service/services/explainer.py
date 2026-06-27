@@ -31,15 +31,22 @@ class RiskExplainer:
         self.feature_columns = []
         self.label_encoder = None
         self.target_classes = []
-        self.shap_values_cache = {}
 
-    def initialize(self) -> bool:
+    def initialize(self, model=None, label_encoder=None, feature_columns=None, target_classes=None) -> bool:
         """
-        Load model, metadata, and initialize SHAP explainer
+        Initialize SHAP explainer using shared model artifacts when provided.
         
         Returns:
             True if initialization successful
         """
+        if model is not None and label_encoder is not None:
+            self.model = model
+            self.label_encoder = label_encoder
+            self.feature_columns = feature_columns or []
+            self.target_classes = target_classes or []
+            self.explainer = shap.TreeExplainer(self.model)
+            return True
+
         print("Initializing SHAP explainer...")
 
         try:
@@ -70,28 +77,20 @@ class RiskExplainer:
             print(f"Error initializing explainer: {e}")
             return False
 
-    def explain_prediction(
-        self, X: np.ndarray, return_details: bool = True
+    def explain_from_prediction(
+        self,
+        X: np.ndarray,
+        prediction_encoded: int,
+        confidence: float,
+        return_details: bool = False,
     ) -> Dict:
         """
-        Explain a single prediction with SHAP values
-        
-        Args:
-            X: Feature vector (1D array or 2D array with 1 row)
-            return_details: Whether to include detailed explanation
-            
-        Returns:
-            Dictionary with prediction and explanation
+        Explain a prediction using precomputed class index (skips duplicate inference).
         """
         if X.ndim == 1:
             X = X.reshape(1, -1)
 
-        prediction_encoded = self.model.predict(X)[0]
         predicted_class = self.label_encoder.inverse_transform([prediction_encoded])[0]
-
-        probabilities = self.model.predict_proba(X)[0]
-        confidence = float(probabilities[prediction_encoded])
-
         shap_values = self.explainer.shap_values(X)
 
         if isinstance(shap_values, list):
@@ -132,10 +131,6 @@ class RiskExplainer:
         explanation = {
             "predicted_class": predicted_class,
             "confidence": confidence,
-            "probabilities": {
-                self.target_classes[i]: float(probabilities[i])
-                for i in range(len(self.target_classes))
-            },
             "top_features": top_features,
             "positive_contributors": positive_contributors,
             "negative_contributors": negative_contributors,
@@ -145,7 +140,46 @@ class RiskExplainer:
             explanation["raw_shap_values"] = {
                 feat: float(val) for feat, val in feature_contributions.items()
             }
-            explanation["base_value"] = float(self.explainer.expected_value[prediction_encoded] if isinstance(self.explainer.expected_value, (list, np.ndarray)) else self.explainer.expected_value)
+            explanation["base_value"] = float(
+                self.explainer.expected_value[prediction_encoded]
+                if isinstance(self.explainer.expected_value, (list, np.ndarray))
+                else self.explainer.expected_value
+            )
+
+        return explanation
+
+    def explain_prediction(
+        self, X: np.ndarray, return_details: bool = True
+    ) -> Dict:
+        """
+        Explain a single prediction with SHAP values
+        
+        Args:
+            X: Feature vector (1D array or 2D array with 1 row)
+            return_details: Whether to include detailed explanation
+            
+        Returns:
+            Dictionary with prediction and explanation
+        """
+        if X.ndim == 1:
+            X = X.reshape(1, -1)
+
+        prediction_encoded = self.model.predict(X)[0]
+        probabilities = self.model.predict_proba(X)[0]
+        confidence = float(probabilities[prediction_encoded])
+
+        explanation = self.explain_from_prediction(
+            X[0],
+            prediction_encoded,
+            confidence,
+            return_details=return_details,
+        )
+
+        if return_details:
+            explanation["probabilities"] = {
+                self.target_classes[i]: float(probabilities[i])
+                for i in range(len(self.target_classes))
+            }
 
         return explanation
 

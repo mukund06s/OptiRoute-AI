@@ -231,10 +231,6 @@ export class LangGraphOrchestrator {
         where: {
           status: { in: ['in_transit', 'delayed', 'at_risk'] },
         },
-        include: {
-          currentHub: true,
-          destinationHub: true,
-        },
       });
 
       console.log(`[LangGraphOrchestrator] Found ${shipments.length} active shipments`);

@@ -127,6 +127,7 @@ export class WorkflowSchedulerService {
       // Fetch all active hubs
       const hubs = await prisma.hub.findMany({
         where: { isActive: true },
+        select: { id: true },
       });
 
       console.log(`[WorkflowScheduler] Found ${hubs.length} active hubs for risk recalculation`);

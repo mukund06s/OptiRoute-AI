@@ -30,15 +30,20 @@ export class WeatherService {
     this.provider = createWeatherProvider();
   }
 
-  async getWeatherForHub(hubId: number): Promise<WeatherResult> {
+  async getWeatherForHub(
+    hubId: number,
+    hubRecord?: { id: number; name: string; latitude: { toString(): string }; longitude: { toString(): string } }
+  ): Promise<WeatherResult> {
     const cached = weatherCache.get(hubId);
     if (cached) {
       return { ...cached, source: 'cache' as const };
     }
 
-    const hub = await prisma.hub.findUnique({
-      where: { id: hubId },
-    });
+    const hub =
+      hubRecord ??
+      (await prisma.hub.findUnique({
+        where: { id: hubId },
+      }));
 
     if (!hub) {
       throw new Error(`Hub not found: ${hubId}`);
@@ -70,11 +75,11 @@ export class WeatherService {
   async getWeatherForAllHubs(): Promise<WeatherResult[]> {
     const hubs = await prisma.hub.findMany({
       where: { isActive: true },
-      select: { id: true, name: true },
+      select: { id: true, name: true, latitude: true, longitude: true },
     });
 
     const results = await Promise.allSettled(
-      hubs.map((hub) => this.getWeatherForHub(hub.id))
+      hubs.map((hub) => this.getWeatherForHub(hub.id, hub))
     );
 
     return results

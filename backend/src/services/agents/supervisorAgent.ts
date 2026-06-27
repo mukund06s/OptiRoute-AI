@@ -91,9 +91,14 @@ export class SupervisorAgent {
   async evaluateShipment(shipmentId: number): Promise<ShipmentEvaluation> {
     const shipment = await prisma.shipment.findUnique({
       where: { id: shipmentId },
-      include: {
-        currentHub: true,
-        destinationHub: true,
+      select: {
+        id: true,
+        trackingId: true,
+        status: true,
+        currentHubId: true,
+        originHubId: true,
+        destinationHubId: true,
+        activeRoute: true,
       },
     });
 

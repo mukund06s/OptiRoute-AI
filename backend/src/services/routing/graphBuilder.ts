@@ -34,10 +34,12 @@ export interface GraphStats {
 export class GraphBuilder {
   private graph: Graph;
   private nodeSet: Set<number>;
+  private incomingNodes: Set<number>;
 
   constructor() {
     this.graph = new Map();
     this.nodeSet = new Set();
+    this.incomingNodes = new Set();
   }
 
   async buildGraph(): Promise<GraphResult> {
@@ -62,6 +64,7 @@ export class GraphBuilder {
 
       this.graph.clear();
       this.nodeSet.clear();
+      this.incomingNodes.clear();
 
       for (const hub of hubs) {
         this.nodeSet.add(hub.id);
@@ -92,6 +95,7 @@ export class GraphBuilder {
         const edges = this.graph.get(route.originHubId);
         if (edges) {
           edges.push(edge);
+          this.incomingNodes.add(route.destinationHubId);
           validEdgeCount++;
         }
       }
@@ -156,9 +160,7 @@ export class GraphBuilder {
 
     for (const nodeId of this.nodeSet) {
       const outgoingEdges = this.graph.get(nodeId) || [];
-      const hasIncoming = Array.from(this.graph.values()).some((edges) =>
-        edges.some((edge) => edge.destinationHubId === nodeId)
-      );
+      const hasIncoming = this.incomingNodes.has(nodeId);
 
       if (outgoingEdges.length === 0 && !hasIncoming) {
         isolatedNodes.push(nodeId);

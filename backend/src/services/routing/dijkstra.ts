@@ -126,26 +126,28 @@ export function dijkstra(
 
   let current: number | null = endHubId;
   while (current !== null) {
-    path.unshift(current);
+    path.push(current);
 
-    const riskScore = options?.riskScores?.get(current);
+    const prevNode = previous.get(current);
+    if (prevNode) {
+      const { edge } = prevNode;
+      totalDistanceKm += edge.baseDistanceKm;
+      totalDurationMinutes += edge.baseDurationMinutes;
+    }
+
+    current = prevNode ? prevNode.hubId : null;
+  }
+
+  path.reverse();
+
+  for (const hubId of path) {
+    const riskScore = options?.riskScores?.get(hubId);
     if (riskScore && (riskScore.riskLevel === 'HIGH' || riskScore.riskLevel === 'CRITICAL')) {
       riskFlags.push({
-        hubId: current,
+        hubId,
         riskLevel: riskScore.riskLevel,
       });
     }
-
-    const prevNode = previous.get(current);
-    if (!prevNode) {
-      break;
-    }
-
-    const { edge } = prevNode;
-    totalDistanceKm += edge.baseDistanceKm;
-    totalDurationMinutes += edge.baseDurationMinutes;
-
-    current = prevNode.hubId;
   }
 
   return {
