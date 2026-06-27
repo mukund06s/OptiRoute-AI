@@ -20,7 +20,7 @@ export class WorkflowController {
       const { shipmentId } = req.body;
 
       // Fetch shipment details
-      const shipment = await prisma.shipments.findUnique({
+      const shipment = await prisma.shipment.findUnique({
         where: { id: shipmentId },
       });
 
@@ -35,10 +35,10 @@ export class WorkflowController {
       // Prepare shipment context
       const shipmentContext = {
         shipmentId: shipment.id,
-        trackingId: shipment.tracking_id,
-        currentHubId: shipment.current_hub_id,
-        destinationHubId: shipment.destination_hub_id,
-        activeRoute: shipment.active_route as number[],
+        trackingId: shipment.trackingId,
+        currentHubId: shipment.currentHubId,
+        destinationHubId: shipment.destinationHubId,
+        activeRoute: shipment.activeRoute as number[],
         priority: shipment.priority,
       };
 
@@ -50,7 +50,7 @@ export class WorkflowController {
         workflowId: result.workflowId,
         cycleId: result.cycleId,
         shipmentId: shipmentId,
-        trackingId: shipment.tracking_id,
+        trackingId: shipment.trackingId,
         overallStatus: result.overallStatus,
         executionTimeMs: result.executionTimeMs,
         summary: result.summary,
@@ -106,7 +106,7 @@ export class WorkflowController {
       const { shipmentIds } = req.body;
 
       // Fetch all shipments
-      const shipments = await prisma.shipments.findMany({
+      const shipments = await prisma.shipment.findMany({
         where: {
           id: { in: shipmentIds },
         },
@@ -133,10 +133,10 @@ export class WorkflowController {
         try {
           const shipmentContext = {
             shipmentId: shipment.id,
-            trackingId: shipment.tracking_id,
-            currentHubId: shipment.current_hub_id,
-            destinationHubId: shipment.destination_hub_id,
-            activeRoute: shipment.active_route as number[],
+            trackingId: shipment.trackingId,
+            currentHubId: shipment.currentHubId,
+            destinationHubId: shipment.destinationHubId,
+            activeRoute: shipment.activeRoute as number[],
             priority: shipment.priority,
           };
 
@@ -145,7 +145,7 @@ export class WorkflowController {
 
           results.push({
             shipmentId: shipment.id,
-            trackingId: shipment.tracking_id,
+            trackingId: shipment.trackingId,
             success: result.success,
             workflowId: result.workflowId,
             overallStatus: result.overallStatus,
@@ -160,7 +160,7 @@ export class WorkflowController {
         } catch (error: any) {
           results.push({
             shipmentId: shipment.id,
-            trackingId: shipment.tracking_id,
+            trackingId: shipment.trackingId,
             success: false,
             error: error.message,
           });

@@ -18,10 +18,10 @@
     "medium"
   ],
   "validation_metrics": {
-    "accuracy": 0.9066666666666666,
-    "precision": 0.907387802407463,
-    "recall": 0.9066666666666666,
-    "f1_score": 0.9065415684110391,
+    "accuracy": 0.9108333333333334,
+    "precision": 0.911591295929795,
+    "recall": 0.9108333333333334,
+    "f1_score": 0.9108170624682785,
     "confusion_matrix": [
       [
         107,
@@ -30,74 +30,74 @@
         0
       ],
       [
-        11,
+        9,
         320,
         0,
+        19
+      ],
+      [
+        0,
+        0,
+        332,
         17
       ],
       [
         0,
-        0,
-        333,
-        16
-      ],
-      [
-        0,
-        30,
-        18,
-        328
+        27,
+        15,
+        334
       ]
     ]
   },
   "test_metrics": {
-    "accuracy": 0.8975,
-    "precision": 0.8991077496681258,
-    "recall": 0.8975,
-    "f1_score": 0.8973684030356325,
+    "accuracy": 0.9025,
+    "precision": 0.9038143955918779,
+    "recall": 0.9025,
+    "f1_score": 0.9023383094530762,
     "confusion_matrix": [
       [
-        174,
-        37,
+        172,
+        39,
         0,
         0
       ],
       [
-        7,
-        535,
+        10,
+        536,
         0,
-        39
+        35
       ],
       [
         0,
         0,
-        549,
-        33
+        550,
+        32
       ],
       [
         0,
-        52,
-        37,
-        537
+        46,
+        33,
+        547
       ]
     ]
   },
   "feature_importance": {
-    "origin_hub": 0.01675207041179979,
-    "destination_hub": 0.01723780524931785,
-    "distance_km": 0.028979311090452094,
-    "duration_minutes": 0.028431090195619423,
-    "road_type": 0.009982609115252256,
-    "weather_condition": 0.058819157329562034,
-    "traffic_level": 0.0545936746859496,
-    "shipment_priority": 0.08053014985322898,
-    "weight_kg": 0.028872253729145387,
-    "departure_hour": 0.039956156544469955,
-    "day_of_week": 0.014185656959225993,
-    "historical_delay_minutes": 0.30031657273337714,
-    "current_risk_level": 0.22891320440774457,
-    "rerouted_before": 0.021037747633830345,
-    "destination_delay_rate": 0.07139254006102459
+    "origin_hub": 0.016784926157711308,
+    "destination_hub": 0.017112228722166212,
+    "distance_km": 0.029085312620888894,
+    "duration_minutes": 0.028356710524187506,
+    "road_type": 0.01040149892613791,
+    "weather_condition": 0.06469101088159776,
+    "traffic_level": 0.05995957609264018,
+    "shipment_priority": 0.07815814638898978,
+    "weight_kg": 0.028697118910777124,
+    "departure_hour": 0.03882314124882425,
+    "day_of_week": 0.015070954723781118,
+    "historical_delay_minutes": 0.2759255321938793,
+    "current_risk_level": 0.24524888985371052,
+    "rerouted_before": 0.022264027753318424,
+    "destination_delay_rate": 0.06942092500138973
   },
-  "training_timestamp": "2026-06-27T03:02:09.046491",
+  "training_timestamp": "2026-06-28T01:35:15.578287",
   "model_version": "v1.0"
 }

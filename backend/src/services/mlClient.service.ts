@@ -45,7 +45,7 @@ export class MLClientService {
   private timeout: number;
 
   constructor() {
-    this.baseUrl = process.env.ML_SERVICE_URL || 'http://localhost:8001';
+    this.baseUrl = process.env.ML_SERVICE_URL || 'http://localhost:8000';
     this.timeout = 10000;
 
     this.client = axios.create({

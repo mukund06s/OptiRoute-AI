@@ -27,6 +27,7 @@ export interface AgentStep {
   maxRetries: number;
   startedAt?: Date;
   completedAt?: Date;
+  updatedAt?: Date;
   error?: string;
   metadata?: Record<string, any>;
 }

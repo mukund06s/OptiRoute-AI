@@ -227,13 +227,13 @@ export class LangGraphOrchestrator {
 
     try {
       // Fetch all active shipments
-      const shipments = await prisma.shipments.findMany({
+      const shipments = await prisma.shipment.findMany({
         where: {
           status: { in: ['in_transit', 'delayed', 'at_risk'] },
         },
         include: {
-          hubs_shipments_current_hub_idTohubs: true,
-          hubs_shipments_destination_hub_idTohubs: true,
+          currentHub: true,
+          destinationHub: true,
         },
       });
 
@@ -250,10 +250,10 @@ export class LangGraphOrchestrator {
       for (const shipment of shipments) {
         const context: ShipmentContext = {
           shipmentId: shipment.id,
-          trackingId: shipment.tracking_id,
-          currentHubId: shipment.current_hub_id,
-          destinationHubId: shipment.destination_hub_id,
-          activeRoute: shipment.active_route as number[],
+          trackingId: shipment.trackingId,
+          currentHubId: shipment.currentHubId,
+          destinationHubId: shipment.destinationHubId,
+          activeRoute: shipment.activeRoute as number[],
           priority: shipment.priority,
         };
 

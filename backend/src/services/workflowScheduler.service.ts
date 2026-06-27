@@ -125,8 +125,8 @@ export class WorkflowSchedulerService {
       console.log(`[WorkflowScheduler] Executing risk recalculation...`);
 
       // Fetch all active hubs
-      const hubs = await prisma.hubs.findMany({
-        where: { is_active: true },
+      const hubs = await prisma.hub.findMany({
+        where: { isActive: true },
       });
 
       console.log(`[WorkflowScheduler] Found ${hubs.length} active hubs for risk recalculation`);
