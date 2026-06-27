@@ -133,13 +133,21 @@ export const riskApi = {
 };
 
 export const alertsApi = {
-  list:         (params?: AlertParams) => {
+  list: async (params?: AlertParams) => {
     const qs = params
       ? '?' + new URLSearchParams(params as Record<string, string>).toString()
       : '';
-    return api.get<AlertListResponse>(`/alerts${qs}`);
+    const res = await api.get<ApiDataResponse<AlertItem[]>>(`/alerts${qs}`);
+    return { alerts: res.data, total: res.data.length };
   },
-  stats:        () => api.get<AlertStats>('/alerts/stats'),
+  byShipment: async (shipmentId: number) => {
+    const res = await api.get<ApiDataResponse<AlertItem[]>>(`/alerts/shipment/${shipmentId}`);
+    return { alerts: res.data, total: res.data.length };
+  },
+  stats: async () => {
+    const res = await api.get<ApiDataResponse<AlertStats>>('/alerts/stats');
+    return res.data;
+  },
 };
 
 export const agentsApi = {
@@ -282,6 +290,49 @@ export interface ShipmentStats {
 
 export interface AlertParams { status?: string; channel?: string; }
 
+export interface AlertAnomalyDetails {
+  severity?: string;
+  riskLevel?: string;
+  agentName?: string;
+  hubId?: number;
+  hubName?: string;
+  [key: string]: unknown;
+}
+
+export interface AlertRouteChangeRef {
+  id?: number;
+  riskLevelTriggered?: string | null;
+  triggeredByHubId?: number | null;
+  reason?: string;
+  triggeredByHub?: Hub | null;
+}
+
+export interface AlertShipmentRef {
+  id: number;
+  trackingId?: string;
+  tracking_id?: string;
+  currentHubId?: number | null;
+  currentHub?: Hub | null;
+}
+
+export interface AlertItem {
+  id: number;
+  routeChangeId: number | null;
+  shipmentId: number | null;
+  channel: string;
+  recipient: string | null;
+  subject: string | null;
+  message: string;
+  isAnomalyAlert: boolean;
+  anomalyDetails: AlertAnomalyDetails | null;
+  status: string;
+  n8nExecutionId: string | null;
+  sentAt: string;
+  shipment?: AlertShipmentRef | null;
+  routeChange?: AlertRouteChangeRef | null;
+}
+
+/** @deprecated Use AlertItem */
 export interface Alert {
   id: number;
   route_change_id: number | null;
@@ -297,8 +348,13 @@ export interface Alert {
   sent_at: string;
 }
 
-export interface AlertListResponse { alerts: Alert[]; total: number; }
-export interface AlertStats { total: number; sent: number; failed: number; today_count: number; }
+export interface AlertListResponse { alerts: AlertItem[]; total: number; }
+export interface AlertStats {
+  total: number;
+  sent: number;
+  failed: number;
+  today_count: number;
+}
 
 export interface AgentStatus {
   isRunning: boolean;

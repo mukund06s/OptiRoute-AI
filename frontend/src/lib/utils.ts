@@ -39,6 +39,27 @@ export function statusBadgeClass(status: string): string {
   }
 }
 
+/** Alert delivery status → display badge class */
+export function alertStatusBadgeClass(status: string): string {
+  switch (status?.toLowerCase()) {
+    case 'sent':    return 'bg-green-500/20 text-green-400 border border-green-500/30';
+    case 'failed':  return 'bg-red-500/20 text-red-400 border border-red-500/30';
+    case 'pending': return 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/30';
+    default:        return 'bg-slate-500/20 text-slate-400 border border-slate-500/30';
+  }
+}
+
+/** Alert severity → display badge class */
+export function severityBadgeClass(severity: string): string {
+  switch (severity?.toLowerCase()) {
+    case 'critical': return 'bg-red-500/20 text-red-400 border border-red-500/30';
+    case 'high':     return 'bg-orange-500/20 text-orange-400 border border-orange-500/30';
+    case 'medium':   return 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/30';
+    case 'anomaly':  return 'bg-purple-500/20 text-purple-400 border border-purple-500/30';
+    default:         return 'bg-slate-500/20 text-slate-400 border border-slate-500/30';
+  }
+}
+
 /** Priority → display badge class */
 export function priorityBadgeClass(priority: string): string {
   switch (priority?.toLowerCase()) {
