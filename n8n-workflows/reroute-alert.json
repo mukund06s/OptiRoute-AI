@@ -1,12 +1,356 @@
 {
-  "name": "OptiRoute Reroute Alert",
-  "nodes": [],
-  "connections": {},
+  "name": "OptiRoute - Reroute Alert Workflow",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "optiroute-webhook",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-trigger",
+      "name": "Webhook Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [250, 300],
+      "webhookId": "optiroute-webhook"
+    },
+    {
+      "parameters": {
+        "values": {
+          "string": [
+            {
+              "name": "event",
+              "value": "={{ $json.body.event }}"
+            },
+            {
+              "name": "trackingId",
+              "value": "={{ $json.body.shipment.trackingId }}"
+            },
+            {
+              "name": "shipmentId",
+              "value": "={{ $json.body.shipment.id }}"
+            },
+            {
+              "name": "priority",
+              "value": "={{ $json.body.shipment.priority }}"
+            },
+            {
+              "name": "isAnomaly",
+              "value": "={{ $json.body.alert ? $json.body.alert.isAnomaly : false }}"
+            },
+            {
+              "name": "severity",
+              "value": "={{ $json.body.alert ? $json.body.alert.severity : 'low' }}"
+            },
+            {
+              "name": "cycleId",
+              "value": "={{ $json.body.cycleId }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "set-node",
+      "name": "Extract Fields",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 1,
+      "position": [450, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $json.event }}",
+              "value2": "critical_risk"
+            }
+          ]
+        }
+      },
+      "id": "if-critical",
+      "name": "Is Critical Risk?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [650, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json.isAnomaly }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "if-anomaly",
+      "name": "Is Anomaly?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [850, 200]
+    },
+    {
+      "parameters": {
+        "values": {
+          "string": [
+            {
+              "name": "notificationType",
+              "value": "HIGH_PRIORITY_ANOMALY"
+            },
+            {
+              "name": "alertMessage",
+              "value": "🚨 ANOMALY DETECTED: {{ $json.trackingId }}"
+            },
+            {
+              "name": "description",
+              "value": "Multiple hubs experiencing critical risk simultaneously. Immediate action required."
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "prepare-high-priority",
+      "name": "Prepare High Priority Alert",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 1,
+      "position": [1050, 100]
+    },
+    {
+      "parameters": {
+        "values": {
+          "string": [
+            {
+              "name": "notificationType",
+              "value": "STANDARD_ALERT"
+            },
+            {
+              "name": "alertMessage",
+              "value": "📦 Shipment Update: {{ $json.trackingId }}"
+            },
+            {
+              "name": "description",
+              "value": "Route optimization completed. Shipment rerouted for better delivery."
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "prepare-standard",
+      "name": "Prepare Standard Alert",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 1,
+      "position": [1050, 300]
+    },
+    {
+      "parameters": {
+        "values": {
+          "string": [
+            {
+              "name": "notificationType",
+              "value": "INFO"
+            },
+            {
+              "name": "alertMessage",
+              "value": "ℹ️ Workflow Completed: {{ $json.trackingId }}"
+            },
+            {
+              "name": "description",
+              "value": "Workflow execution completed successfully."
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "prepare-info",
+      "name": "Prepare Info Message",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 1,
+      "position": [850, 400]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.N8N_MOCK_WEBHOOK_URL || 'https://webhook.site/unique-url' }}",
+        "jsonParameters": true,
+        "options": {},
+        "bodyParametersJson": "={{ JSON.stringify($json) }}"
+      },
+      "id": "send-mock-notification",
+      "name": "Send to Mock Endpoint",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 1,
+      "position": [1250, 300]
+    },
+    {
+      "parameters": {
+        "values": {
+          "string": [
+            {
+              "name": "status",
+              "value": "sent"
+            },
+            {
+              "name": "executionId",
+              "value": "={{ $workflow.id }}-{{ $execution.id }}"
+            },
+            {
+              "name": "timestamp",
+              "value": "={{ new Date().toISOString() }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "log-execution",
+      "name": "Log Execution",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 1,
+      "position": [1450, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ success: true, executionId: $json.executionId, timestamp: $json.timestamp }) }}"
+      },
+      "id": "webhook-response",
+      "name": "Webhook Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1650, 300]
+    }
+  ],
+  "connections": {
+    "Webhook Trigger": {
+      "main": [
+        [
+          {
+            "node": "Extract Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Fields": {
+      "main": [
+        [
+          {
+            "node": "Is Critical Risk?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Critical Risk?": {
+      "main": [
+        [
+          {
+            "node": "Is Anomaly?",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Prepare Info Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Anomaly?": {
+      "main": [
+        [
+          {
+            "node": "Prepare High Priority Alert",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Prepare Standard Alert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare High Priority Alert": {
+      "main": [
+        [
+          {
+            "node": "Send to Mock Endpoint",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Standard Alert": {
+      "main": [
+        [
+          {
+            "node": "Send to Mock Endpoint",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Info Message": {
+      "main": [
+        [
+          {
+            "node": "Send to Mock Endpoint",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send to Mock Endpoint": {
+      "main": [
+        [
+          {
+            "node": "Log Execution",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log Execution": {
+      "main": [
+        [
+          {
+            "node": "Webhook Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
   "active": false,
   "settings": {},
-  "versionId": "1",
+  "versionId": "1.0.0",
+  "id": "optiroute-reroute-alert",
   "meta": {
-    "instanceId": "optiroute"
+    "instanceId": "optiroute-production"
   },
-  "tags": []
+  "tags": [
+    {
+      "name": "OptiRoute",
+      "id": "1"
+    },
+    {
+      "name": "Logistics",
+      "id": "2"
+    }
+  ]
 }
